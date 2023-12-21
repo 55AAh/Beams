@@ -4,7 +4,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Executable
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME}
+        shader_buffers.cpp
+        main.cpp
+)
+
+# Shader files (copying to working directory)
+add_custom_command(
+        OUTPUT some_file
+        COMMAND cmake -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/shaders ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders
+)
+add_custom_target(
+        some_target
+        DEPENDS some_file
+)
+add_dependencies(${PROJECT_NAME} some_target)
+
 
 # Solver library
 add_subdirectory(Solver)
