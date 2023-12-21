@@ -42,3 +42,23 @@ FetchContent_Declare(GLEW
 )
 FetchContent_MakeAvailable(GLEW)
 target_link_libraries(${PROJECT_NAME} PRIVATE libglew_static)
+
+# ImGui
+FetchContent_Declare(
+        imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui
+        GIT_TAG v1.90
+)
+FetchContent_MakeAvailable(imgui)
+
+#ImGui-SFML
+FetchContent_Declare(
+        imgui-sfml
+        GIT_REPOSITORY https://github.com/SFML/imgui-sfml
+        GIT_TAG v2.6
+)
+set(IMGUI_DIR ${imgui_SOURCE_DIR})
+set(IMGUI_SFML_FIND_SFML OFF)
+set(IMGUI_SFML_IMGUI_DEMO ON)
+FetchContent_MakeAvailable(imgui-sfml)
+target_link_libraries(${PROJECT_NAME} PRIVATE ImGui-SFML::ImGui-SFML)
