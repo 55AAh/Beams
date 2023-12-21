@@ -13,3 +13,32 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         "${PROJECT_BINARY_DIR}"
         "${PROJECT_SOURCE_DIR}/Solver"
 )
+
+# SFML
+include(FetchContent)
+FetchContent_Declare(SFML
+        GIT_REPOSITORY https://github.com/SFML/SFML.git
+        GIT_TAG 2.6.x
+)
+FetchContent_MakeAvailable(SFML)
+target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics)
+
+if(WIN32)
+    add_custom_command(
+            TARGET ${PROJECT_NAME}
+            COMMENT "Copy OpenAL DLL"
+            PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${SFML_SOURCE_DIR}/extlibs/bin/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,x64,x86>/openal32.dll $<TARGET_FILE_DIR:${PROJECT_NAME}>
+            VERBATIM)
+endif()
+
+# OpenGL
+find_package(OpenGL REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARY})
+
+# GLEW
+FetchContent_Declare(GLEW
+        GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
+        GIT_TAG glew-cmake-2.2.0
+)
+FetchContent_MakeAvailable(GLEW)
+target_link_libraries(${PROJECT_NAME} PRIVATE libglew_static)
