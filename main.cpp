@@ -28,21 +28,41 @@ void draw_grid_n_axes() {
 
 static int elements_count = 3, segments_count = 5;
 
-void calculate(ElementParams* elements) {
-    static bool show_demo_window;
-    static float o;
-    ImGui::SliderFloat("o", &o, 0, 1);
+void calculate(Solver* solver, ShaderBuffers* shader_buffers) {
+    if (solver->was_setup()) {
+        if (ImGui::Button("Delete problem")) {
+            shader_buffers->free();
+            solver->forget();
+        }
+    }
+    else {
+        if (ImGui::Button("Setup problem")) {
+            UniformParams new_up { 1, 1, 1000, 3 * 3.1415926 / 4 };
+            solver->setup(new_up);
+            shader_buffers->re_alloc(elements_count, segments_count);
+        }
+    }
+
+    // Calculate the new frame
+    static bool show_demo_window = true;
     ImGui::ShowDemoWindow(&show_demo_window);
+    bool elements_count_changed = ImGui::SliderInt("Elements", &elements_count, 1, 1000);
+    bool segments_count_changed = ImGui::SliderInt("Segments", &segments_count, 1, 10);
+    if (elements_count_changed || segments_count_changed) {
+        shader_buffers->re_alloc(elements_count, segments_count);
+    }
+
+    if (!solver->was_setup()) {
+        return;
+    }
+
+    static float theta = 0;
+    ImGui::SliderFloat("theta", &theta, 0, PI / 2);
 
     // Compute shader buffers
-    if (elements != nullptr) {
-        elements[0].u = 0.1f + o;
-        elements[1].u = 0.2f;
-        elements[2].u = 0.4f;
-
-        elements[0].w = 0.1f;
-        elements[1].w = 0.1f;
-        elements[2].w = 0.1f;
+    ElementParams* element_params = shader_buffers->get_buffer_ptr();
+    if (element_params != nullptr) {
+        solver->traverse(theta, element_params, elements_count, 0, elements_count - 1);
     }
 }
 
@@ -66,7 +86,11 @@ int main() {
     }
 
     // Load & compile shaders
-    ShaderBuffers shader_buffers("shaders\\vertex_shader.vert", "shaders\\fragment_shader.frag");
+    ShaderBuffers shader_buffers("shaders\\vertex_shader.vert",
+                                 "shaders\\fragment_shader.frag",
+                                 "shaders\\formulae.h");
+
+    Solver solver;
 
     sf::Clock deltaClock;
     bool running = true;
@@ -92,12 +116,8 @@ int main() {
         ImGui::SFML::Update(window, deltaClock.restart());
 
         // Process ImGui & generate draw lists
-        if (ImGui::SliderInt("Elements", &elements_count, 1, 1000) ||
-            ImGui::SliderInt("Segments", &segments_count, 1, 1000)) {
-            shader_buffers.re_alloc(elements_count, segments_count);
-            printf("elements %d, segments %d\n", elements_count, segments_count);
-        }
-        calculate(shader_buffers.get_buffer_ptr());
+        // Also calculate the solution
+        calculate(&solver, &shader_buffers);
 
         // Clear the window with black color
         window.clear(sf::Color::Black);
@@ -105,7 +125,9 @@ int main() {
         // Draw frame
         window.setActive(true);
         draw_grid_n_axes();
-        shader_buffers.draw();
+        if (solver.was_setup()) {
+            shader_buffers.draw(solver.up);
+        }
         window.setActive(false);
 
         // Draw ImGui lists

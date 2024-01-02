@@ -5,5 +5,6 @@ endif ()
 
 
 add_library(Solver SHARED
+    formulae.h
     Solver.cpp
 )

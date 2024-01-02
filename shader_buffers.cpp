@@ -1,8 +1,32 @@
+#include <fstream>
+#include <sstream>
 #include "shader_buffers.h"
 
 
-ShaderBuffers::ShaderBuffers(const char* vs_path, const char* fs_path) {
-    if (!shader.loadFromFile(vs_path, fs_path)) {
+std::string read_file(const char* path) {
+    std::ifstream ifs(path);
+    if (!ifs.is_open()) {
+        fprintf(stderr, "Error reading file '%s'!\n", path);
+        abort();
+    }
+    std::string str((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    return str;
+}
+
+ShaderBuffers::ShaderBuffers(const char* vs_path, const char* fs_path, const char* formulae_h_path) {
+    std::string vs_code = read_file(vs_path);
+    std::string fs_code = read_file(fs_path);
+    std::string formulae_code = read_file(formulae_h_path);
+
+    std::string formulae_patch_marker = "// FORMULAE //";
+    size_t formulae_code_pos = vs_code.find(formulae_patch_marker);
+    if (formulae_code_pos == std::string::npos) {
+        fprintf(stderr, "Patch marker '%s' not found in '%s'!\n", formulae_patch_marker.c_str(), vs_path);
+        abort();
+    }
+    vs_code.replace(formulae_code_pos, formulae_patch_marker.length(), formulae_code.c_str());
+
+    if (!shader.loadFromMemory(vs_code, fs_code)) {
         abort();
     }
 }
@@ -50,9 +74,9 @@ void ShaderBuffers::re_alloc(size_t new_elements_count, size_t new_segments_coun
     // Fill VBO buffer
     auto _ptr = vbo_mapped_ptr;
     for (size_t element = 0; element < new_elements_count; ++element) {
-        for (size_t s = 0; s <= new_segments_count; ++s) {
+        for (size_t si = 0; si <= new_segments_count; ++si) {
             _ptr->element = (float)element;
-            _ptr->s = (float)s / (float)new_segments_count;
+            _ptr->s = (float)si / (float)new_segments_count;
             ++_ptr;
         }
     }
@@ -67,9 +91,12 @@ ElementParams *ShaderBuffers::get_buffer_ptr() {
     return allocated ? ssbo_mapped_ptr : nullptr;
 }
 
-void ShaderBuffers::draw() {
+void ShaderBuffers::draw(UniformParams up) {
     if (allocated) {
         sf::Shader::bind(&shader);
+
+        UP_ARRAY(up_array, up);
+        shader.setUniformArray("up_array", up_array, UP_ARRAY_SIZE);
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo_index);
         glEnableVertexAttribArray(0);

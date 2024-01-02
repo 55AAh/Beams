@@ -13,13 +13,13 @@ struct VBO_vertex {
 
 class ShaderBuffers {
 public:
-    ShaderBuffers(const char* vs_path, const char* fs_path);
+    ShaderBuffers(const char* vs_path, const char* fs_path, const char* formulae_h_path);
 
     void re_alloc(size_t new_elements_count, size_t new_segments_count);
 
     ElementParams* get_buffer_ptr();
 
-    void draw();
+    void draw(UniformParams up);
 
     void free();
 
