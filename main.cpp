@@ -89,9 +89,7 @@ int main() {
     }
 
     // Load & compile shaders
-    ShaderBuffers shader_buffers("shaders\\vertex_shader.vert",
-                                 "shaders\\fragment_shader.frag",
-                                 "shaders\\formulae.h");
+    ShaderBuffers shader_buffers;
 
     Solver solver;
 

@@ -2,26 +2,15 @@
 #define SHADERBEAMS_SOLVER_H
 
 
+#define INSIDE_C_CODE
+#include "shaders/vertex_shader.vert" // This will export type definitions, but not implement EQLINK
+#undef INSIDE_C_CODE
+
+
+#include <string>
+
+
 const float PI = 3.14159265358979f;
-
-struct ElementUWT {
-    float u, w, t;
-};
-ElementUWT construct_uwt(float u, float w, float t);
-
-struct ElementParams {
-    ElementUWT uwt;
-    float m;
-    float q, n;
-};
-
-struct UniformParams {
-    float EI, GJ;
-    float total_weight;
-    float total_length;
-};
-#define UP_ARRAY_SIZE 4
-#define UP_ARRAY(name, up) float name[UP_ARRAY_SIZE] { up.EI, up.GJ, up.total_weight, up.total_length }
 
 class Solver {
 public:

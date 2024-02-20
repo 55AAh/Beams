@@ -2,6 +2,9 @@
 #include <sstream>
 #include "shader_buffers.h"
 
+#include <regex>
+
+
 
 std::string read_file(const char* path) {
     std::ifstream ifs(path);
@@ -13,18 +16,20 @@ std::string read_file(const char* path) {
     return str;
 }
 
-ShaderBuffers::ShaderBuffers(const char* vs_path, const char* fs_path, const char* formulae_h_path) {
-    std::string vs_code = read_file(vs_path);
-    std::string fs_code = read_file(fs_path);
-    std::string formulae_code = read_file(formulae_h_path);
+std::string patch_vertex_shader(const std::string& original_code) {
+    std::regex re(R"(\/\/ % version (.*)\n)");
+    std::string patched_code = std::regex_replace(original_code, re, "#version $1\n");
+    return patched_code;
+}
 
-    std::string formulae_patch_marker = "// FORMULAE //";
-    size_t formulae_code_pos = vs_code.find(formulae_patch_marker);
-    if (formulae_code_pos == std::string::npos) {
-        fprintf(stderr, "Patch marker '%s' not found in '%s'!\n", formulae_patch_marker.c_str(), vs_path);
-        abort();
-    }
-    vs_code.replace(formulae_code_pos, formulae_patch_marker.length(), formulae_code.c_str());
+ShaderBuffers::ShaderBuffers() {
+    const char* vs_path = "shaders\\vertex_shader.vert";
+    const char* fs_path = "shaders\\fragment_shader.frag";
+
+    std::string vs_code = read_file(vs_path);
+    vs_code = patch_vertex_shader(vs_code);
+
+    std::string fs_code = read_file(fs_path);
 
     if (!shader.loadFromMemory(vs_code, fs_code)) {
         abort();
@@ -92,24 +97,26 @@ ElementParams *ShaderBuffers::get_buffer_ptr() {
 }
 
 void ShaderBuffers::draw(UniformParams up) {
-    if (allocated) {
-        sf::Shader::bind(&shader);
-
-        UP_ARRAY(up_array, up);
-        shader.setUniformArray("up_array", up_array, UP_ARRAY_SIZE);
-
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_index);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_index);
-        glDrawArrays(GL_LINE_STRIP, 0, vbo_vertices_count);
-
-        glDisableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        sf::Shader::bind(nullptr);
+    if (!allocated) {
+        return;
     }
+
+    sf::Shader::bind(&shader);
+
+    PACK_UP(up_array, up);
+    shader.setUniformArray("up_array", up_array, UP_ARRAY_SIZE);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_index);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_index);
+    glDrawArrays(GL_LINE_STRIP, 0, vbo_vertices_count);
+
+    glDisableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    sf::Shader::bind(nullptr);
 }
 
 void ShaderBuffers::free() {

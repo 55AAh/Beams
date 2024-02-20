@@ -9,19 +9,6 @@ add_executable(${PROJECT_NAME}
         main.cpp
 )
 
-# Shader files (copying to working directory)
-add_custom_command(
-        OUTPUT some_file
-        COMMAND cmake -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/shaders ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders
-        COMMAND cmake -E copy ${CMAKE_CURRENT_LIST_DIR}/Solver/formulae.h ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders/formulae.h
-)
-add_custom_target(
-        some_target
-        DEPENDS some_file
-)
-add_dependencies(${PROJECT_NAME} some_target)
-
-
 # Solver library
 add_subdirectory(Solver)
 target_link_libraries(${PROJECT_NAME} PUBLIC Solver)

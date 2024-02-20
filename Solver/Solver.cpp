@@ -1,5 +1,11 @@
 #include "Solver.h"
-#include "formulae.h"
+
+#define INSIDE_C_CODE
+#define ONLY_IMPLEMENT_EQLINK
+#include "shaders/vertex_shader.vert" // This will implement EQLINK
+#undef ONLY_IMPLEMENT_EQLINK
+#undef INSIDE_C_CODE
+
 
 ElementUWT construct_uwt(float u, float w, float t) {
     return ElementUWT { u, w, t };
