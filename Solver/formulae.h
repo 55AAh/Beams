@@ -1,12 +1,10 @@
 #ifndef SHADERBEAMS_FORMULAE_H
 #define SHADERBEAMS_FORMULAE_H
 
-// INTENDED TO BE INCLUDED ONCE IN CXX & ONCE IN SHADERS
+// INTENDED TO BE INCLUDED ONCE IN CXX & ONCE IN GLSL
 
-#ifndef IN_SHADER
-#include <cmath>
-#else
-#define FORMULAE_IMPLEMENTED
+#ifndef CURRENTLY_IN_GLSL_SHADER
+#include <cmath> // Trig functions are available in GLSL by default
 #endif
 
 
@@ -45,5 +43,4 @@ ElementUWT calc_uwt(ElementParams ep, UniformParams up, float s) {
     return construct_uwt(base_u, base_w, base_t);
 }
 
-
-#endif
+#endif //SHADERBEAMS_FORMULAE_H

@@ -26,9 +26,11 @@ void draw_grid_n_axes() {
     glEnd();
 }
 
-static int elements_count = 3, segments_count = 5;
+static int elements_count = 10, segments_count = 5;
 
-void calculate(Solver* solver, ShaderBuffers* shader_buffers) {
+static bool debug_auto_setup = true;
+
+void draw_beams(Solver* solver, ShaderBuffers* shader_buffers) {
     if (solver->was_setup()) {
         if (ImGui::Button("Delete problem")) {
             shader_buffers->free();
@@ -36,7 +38,8 @@ void calculate(Solver* solver, ShaderBuffers* shader_buffers) {
         }
     }
     else {
-        if (ImGui::Button("Setup problem")) {
+        if (ImGui::Button("Setup problem") || debug_auto_setup) {
+            debug_auto_setup = false;
             UniformParams new_up { 1, 1, 1000, 3 * 3.1415926 / 4 };
             solver->setup(new_up);
             shader_buffers->re_alloc(elements_count, segments_count);
@@ -117,7 +120,7 @@ int main() {
 
         // Process ImGui & generate draw lists
         // Also calculate the solution
-        calculate(&solver, &shader_buffers);
+        draw_beams(&solver, &shader_buffers);
 
         // Clear the window with black color
         window.clear(sf::Color::Black);

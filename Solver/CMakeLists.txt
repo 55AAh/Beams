@@ -1,6 +1,6 @@
 if (WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
-    set (BUILD_SHARED_LIBS TRUE)
+    set(BUILD_SHARED_LIBS TRUE)
 endif ()
 
 

@@ -44,5 +44,4 @@ private:
     bool _was_setup = false;
 };
 
-
 #endif //SHADERBEAMS_SOLVER_H

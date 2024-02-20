@@ -51,6 +51,6 @@ void main() {
 // Do not remove or change the comment below
 // It will be replaced by the contents of formulae.h
 
-#define IN_SHADER
+#define CURRENTLY_IN_GLSL_SHADER
 // FORMULAE //
-#undef IN_SHADER
+#undef CURRENTLY_IN_GLSL_SHADER
