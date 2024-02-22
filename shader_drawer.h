@@ -10,7 +10,7 @@
 
 class ShaderDrawer {
 public:
-    ShaderDrawer(sf::RenderWindow* window, int new_segments_count = 10);
+    explicit ShaderDrawer(sf::RenderWindow* window, int new_segments_count = 10);
 
     void setup(UniformParams new_up);
 
@@ -31,14 +31,24 @@ private:
 
     Solver solver;
     ShaderBuffers sb;
-    int segments_count;
     sf::RenderWindow *window;
-    float zoom;
-    sf::Vector2f look_at;
-    bool mouse_pressed;
-    sf::Vector2i mouse_initial;
-    sf::Vector2f look_at_initial;
-    bool show_demo_window;
+
+    bool show_demo_window = false;
+
+    int segments_count;
+    bool dashed = false;
+    float zoom = 0.1f;
+    sf::Vector2f look_at = sf::Vector2f(0.0f, 0.0f);
+    bool mouse_pressed = false;
+    sf::Vector2i mouse_initial = sf::Vector2i(0, 0);
+    sf::Vector2f look_at_initial = sf::Vector2f(0.0f, 0.0f);
+
+    bool solved = false;
+    bool auto_solve = true;
+    bool auto_fit_angle = true;
+    float fit_threshold = 1e-3f;
+    float fit_rate = 0.1f;
+    float fit_deviation = 0.0f;
 };
 
 
