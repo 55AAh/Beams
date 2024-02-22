@@ -34,6 +34,8 @@ private:
 
     GLuint ssbo_index = NULL;
     ElementParams* ssbo_mapped_ptr = nullptr;
+
+    size_t elements_count = NULL, segments_count = NULL;
 };
 
 

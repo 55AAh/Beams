@@ -6,6 +6,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Executable
 add_executable(${PROJECT_NAME}
         shader_buffers.cpp
+        shader_drawer.cpp
         main.cpp
 )
 

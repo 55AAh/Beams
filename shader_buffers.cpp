@@ -60,6 +60,12 @@ void free_buffer(GLuint* index) {
 }
 
 void ShaderBuffers::re_alloc(size_t new_elements_count, size_t new_segments_count) {
+    if (allocated && (new_elements_count == elements_count && new_segments_count == segments_count)) {
+        return;
+    }
+    elements_count = new_elements_count;
+    segments_count = new_segments_count;
+
     free();
 
     // Generate SSBO buffer
