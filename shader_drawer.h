@@ -28,6 +28,7 @@ private:
     ShaderBuffers sb;
     int segments_count;
     float zoom;
+    bool show_demo_window;
 };
 
 

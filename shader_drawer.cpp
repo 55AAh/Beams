@@ -6,6 +6,7 @@
 ShaderDrawer::ShaderDrawer(int new_segments_count) {
     segments_count = new_segments_count;
     zoom = 0.1f;
+    show_demo_window = false;
 }
 
 void ShaderDrawer::setup(UniformParams new_up) {
@@ -62,8 +63,11 @@ void ShaderDrawer::process_gui() {
     }
 
     // Calculate the new frame
-    static bool show_demo_window = true;
-    ImGui::ShowDemoWindow(&show_demo_window);
+    ImGui::Checkbox("Show demo window", &show_demo_window);
+    if (show_demo_window) {
+        ImGui::ShowDemoWindow(&show_demo_window);
+    }
+
     bool elements_count_changed = ImGui::SliderInt("Elements", &solver.up.elements_count, 1, 1000);
     if (elements_count_changed) {
         setup(solver.up);

@@ -68,8 +68,8 @@ void ShaderBuffers::re_alloc(size_t new_elements_count, size_t new_segments_coun
 
     free();
 
-    // Generate SSBO buffer
-    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(Element) * new_elements_count);
+    // Generate SSBO buffer (+1 element)
+    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(Element) * (new_elements_count + 1));
     void* ssbo_void_ptr = alloc_buffer(&ssbo_index, GL_SHADER_STORAGE_BUFFER, ssbo_size_bytes);
     ssbo_mapped_ptr = static_cast<Element*>(ssbo_void_ptr);
 

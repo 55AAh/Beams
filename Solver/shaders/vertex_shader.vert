@@ -175,7 +175,7 @@
 
         // Upward force is expressed in basis (at the middle)
         float each_el_length = up.total_length / float(up.elements_count);
-        SolutionBase base_mid = EQLINK_link_base(up, full0, base0, each_el_length / 2); // TODO
+        SolutionBase base_mid = EQLINK_link_base(up, full0, base0, each_el_length / 2.0f);
         float N = full0.Fy * base_mid.tn.t[1];
         float Q = full0.Fy * base_mid.tn.n[1];
 
@@ -230,8 +230,8 @@
 
         // Coordinates are shifted
         float shift_mat_s[2];
-        shift_mat_s[0] = 1 / K * sin(phi);
-        shift_mat_s[1] = 1 / K * (1 - cos(phi));
+        shift_mat_s[0] = 1.0f / K * sin(phi);
+        shift_mat_s[1] = 1.0f / K * (1.0f - cos(phi));
 
         float du = shift_mat_s[0] * full0.tn.t[0] + shift_mat_s[1] * full0.tn.n[0];
         float dw = shift_mat_s[0] * full0.tn.t[1] + shift_mat_s[1] * full0.tn.n[1];
@@ -255,7 +255,7 @@
 
     SolutionCorr EQLINK_link_corr(UniformParams up, SolutionFull full0, SolutionBase base0, SolutionCorr corr0, float s) {
         float K = calc_K(up, base0.M);
-        float R = 1 / K;
+        float R = 1.0f / K;
         float phi = s * K;
         float sin_phi = sin(phi), cos_phi = cos(phi);
 
@@ -264,57 +264,59 @@
         float M0 = corr0.M;
         float N0 = corr0.N, Q0 = corr0.Q;
         float Pt = corr0.Pt, Pn = corr0.Pn;
-        float f = 0;
+        float f = 0.0f;
         float EJ = up.EI;
 
         float fact[7] = { 1, 1, 2, 6, 24, 120, 720 };
+        float pow_phi[6] = { 1.0f, phi, pow(phi, 2.0f), pow(phi, 3.0f), pow(phi, 4.0f), pow(phi, 5.0f) };
+        float pow_s[5] = { 1.0f, s, pow(s, 2.0f), pow(s, 3.0f), pow(s, 4.0f) };
 
-        float u_s = 0;
+        float u_s = 0.0;
         u_s += u0 * cos_phi;
         u_s += w0 * sin_phi;
-        u_s += T0 * s * (phi / 2 - pow(phi, 3) / fact[4] + pow(phi, 5) / fact[6]);
-        u_s += Q0 * (pow(s, 3) / EJ * (phi / fact[4] - 2 * pow(phi, 3) / fact[6]) - f * s * (phi / 2 - pow(phi, 3) / 2 / fact[3] + pow(phi, 5) / 2 / fact[5]));
-        u_s += N0 * (-pow(s, 3) / EJ * (pow(phi, 2) / fact[5]) - f * s * (1 - 2 * pow(phi, 2) / 3 + 3 * pow(phi, 4) / fact[5]));
-        u_s += M0 * pow(s, 2) / EJ * (phi / fact[3] - pow(phi, 3) / fact[5]);
-        u_s += Pn * (pow(s, 4) / EJ * (phi / fact[5]) + f * pow(s, 2) * (-phi / fact[3] + 2 * pow(phi, 3) / fact[5]));
-        u_s += Pt * (-pow(s, 4) / EJ * (pow(phi, 2) / fact[6]) - f * pow(s, 2) * (1 / 2 - pow(phi, 2) / 2 / fact[3] + pow(phi, 4) / 2 / fact[5]));
+        u_s += T0 * s * (phi / 2.0 - pow_phi[3] / fact[4] + pow_phi[5] / fact[6]);
+        u_s += Q0 * (pow_s[3] / EJ * (phi / fact[4] - 2.0 * pow_phi[3] / fact[6]) - f * s * (phi / 2.0 - pow_phi[3] / 2.0 / fact[3] + pow_phi[5] / 2.0 / fact[5]));
+        u_s += N0 * (-pow_s[3] / EJ * (pow_phi[2] / fact[5]) - f * s * (1.0 - 2.0 * pow_phi[2] / 3.0 + 3.0 * pow_phi[4] / fact[5]));
+        u_s += M0 * pow_s[2] / EJ * (phi / fact[3] - pow_phi[3] / fact[5]);
+        u_s += Pn * (pow_s[4] / EJ * (phi / fact[5]) + f * pow_s[2] * (-phi / fact[3] + 2.0 * pow_phi[3] / fact[5]));
+        u_s += Pt * (-pow_s[4] / EJ * (pow_phi[2] / fact[6]) - f * pow_s[2] * (1.0 / 2.0 - pow_phi[2] / 2.0 / fact[3] + pow_phi[4] / 2.0 / fact[5]));
 
-        float w_s = 0;
+        float w_s = 0.0;
         w_s += u0 * -sin_phi;
         w_s += w0 * cos_phi;
         w_s += T0 * R * sin_phi;
-        w_s += Q0 * (pow(s, 3) / EJ * (1 / fact[3] - 2 * pow(phi, 2) / fact[5]) + f * s * (pow(phi, 2) / fact[3] - 2 * pow(phi, 4) / fact[5]));
-        w_s += N0 * (-pow(s, 3) / EJ * (phi / fact[4] - 2 * pow(phi, 3) / fact[6]) + f * s * (phi / 2 - pow(phi, 3) / 2 / fact[3] + pow(phi, 5) / 2 / fact[5]));
-        w_s += M0 * pow(s, 2) / EJ * (1 / 2 - pow(phi, 2) / fact[4] + pow(phi, 4) / fact[6]);
-        w_s += Pn * (pow(s, 4) / EJ * (1 / fact[4] - 2 * pow(phi, 2) / fact[6]) + f * pow(s, 2) * (pow(phi, 2) / fact[4] - 2 * pow(phi, 4) / fact[6]));
-        w_s += Pt * (pow(s, 4) / EJ * (-phi / fact[5]) + f * pow(s, 2) * (phi / fact[3] - 2 * pow(phi, 3) / fact[5]));
+        w_s += Q0 * (pow_s[3] / EJ * (1.0 / fact[3] - 2.0 * pow_phi[2] / fact[5]) + f * s * (pow_phi[2] / fact[3] - 2.0 * pow_phi[4] / fact[5]));
+        w_s += N0 * (-pow_s[3] / EJ * (phi / fact[4] - 2.0 * pow_phi[3] / fact[6]) + f * s * (phi / 2.0 - pow_phi[3] / 2.0 / fact[3] + pow_phi[5] / 2.0 / fact[5]));
+        w_s += M0 * pow_s[2] / EJ * (1.0 / 2.0 - pow_phi[2] / fact[4] + pow_phi[4] / fact[6]);
+        w_s += Pn * (pow_s[4] / EJ * (1.0 / fact[4] - 2.0 * pow_phi[2] / fact[6]) + f * pow_s[2] * (pow_phi[2] / fact[4] - 2.0 * pow_phi[4] / fact[6]));
+        w_s += Pt * (pow_s[4] / EJ * (-phi / fact[5]) + f * pow_s[2] * (phi / fact[3] - 2.0 * pow_phi[3] / fact[5]));
 
-        float T_s = 0;
+        float T_s = 0.0;
         T_s += T0;
-        T_s += Q0 * pow(s, 2) / EJ * (1 / 2 - pow(phi, 2) / fact[4] + pow(phi, 4) / fact[6]);
-        T_s += N0 * (-pow(s, 2) / EJ * (phi / fact[3] - pow(phi, 3) / fact[5]));
+        T_s += Q0 * pow_s[2] / EJ * (1.0 / 2.0 - pow_phi[2] / fact[4] + pow_phi[4] / fact[6]);
+        T_s += N0 * (-pow_s[2] / EJ * (phi / fact[3] - pow_phi[3] / fact[5]));
         T_s += M0 * s / EJ;
-        T_s += Pn * pow(s, 3) / EJ * (1 / fact[3] - pow(phi, 2) / fact[5]);
-        T_s += Pt * pow(s, 3) / EJ * (-phi / fact[4] + pow(phi, 3) / fact[6]);
+        T_s += Pn * pow_s[3] / EJ * (1.0 / fact[3] - pow_phi[2] / fact[5]);
+        T_s += Pt * pow_s[3] / EJ * (-phi / fact[4] + pow_phi[3] / fact[6]);
 
-        float Q_s = 0;
+        float Q_s = 0.0;
         Q_s += Q0 * cos_phi;
         Q_s += N0 * -sin_phi;
         Q_s += Pn * R * sin_phi;
-        Q_s += Pt * s * (-phi / 2 + pow(phi, 3) / fact[4] - pow(phi, 5) / fact[6]);
+        Q_s += Pt * s * (-phi / 2.0 + pow_phi[3] / fact[4] - pow_phi[5] / fact[6]);
 
-        float N_s = 0;
+        float N_s = 0.0;
         N_s += Q0 * sin_phi;
         N_s += N0 * cos_phi;
-        N_s += Pn * s * (phi / 2 - pow(phi, 3) / fact[4] + pow(phi, 5) / fact[6]);
+        N_s += Pn * s * (phi / 2.0 - pow_phi[3] / fact[4] + pow_phi[5] / fact[6]);
         N_s += Pt * R * sin_phi;
 
-        float M_s = 0;
+        float M_s = 0.0;
         M_s += Q0 * R * sin_phi;
-        M_s += N0 * s * (-phi / 2 + pow(phi, 3) / fact[4] - pow(phi, 5) / fact[6]) * N0;
+        M_s += N0 * s * (-phi / 2.0 + pow_phi[3] / fact[4] - pow_phi[5] / fact[6]) * N0;
         M_s += M0;
-        M_s += Pn * pow(s, 2) * (1 / 2 - pow(phi, 2) / fact[4] + pow(phi, 4) / fact[6]);
-        M_s += Pt * pow(s, 2) * (-phi / fact[3] + pow(phi, 3) / fact[5]);
+        M_s += Pn * pow_s[2] * (1.0 / 2.0 - pow_phi[2] / fact[4] + pow_phi[4] / fact[6]);
+        M_s += Pt * pow_s[2] * (-phi / fact[3] + pow_phi[3] / fact[5]);
 
         SolutionCorr corr_s;
         corr_s.u = u_s;
