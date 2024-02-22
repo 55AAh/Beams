@@ -26,12 +26,21 @@ public:
     ~ShaderBuffers() { free(); }
 
 private:
-    sf::Shader shader;
-    bool allocated = false;
+    void internal_re_alloc_VBO(size_t new_elements_count, size_t new_segments_count);
 
+    void internal_re_alloc_SSBO(size_t new_elements_count);
+
+    void internal_ensure_free_VBO();
+
+    void internal_ensure_free_SSBO();
+
+    sf::Shader shader;
+
+    bool vbo_allocated = false;
     GLuint vbo_index = NULL;
     GLsizei vbo_vertices_count = NULL;
 
+    bool ssbo_allocated = false;
     GLuint ssbo_index = NULL;
     Element* ssbo_mapped_ptr = nullptr;
 

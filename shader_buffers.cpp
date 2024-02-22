@@ -60,21 +60,15 @@ void free_buffer(GLuint* index) {
 }
 
 void ShaderBuffers::re_alloc(size_t new_elements_count, size_t new_segments_count) {
-    if (allocated && (new_elements_count == elements_count && new_segments_count == segments_count)) {
+    internal_re_alloc_VBO(new_elements_count, new_segments_count);
+}
+
+void ShaderBuffers::internal_re_alloc_VBO(size_t new_elements_count, size_t new_segments_count) {
+    if (vbo_allocated && (new_elements_count == elements_count && new_segments_count == segments_count)) {
         return;
     }
-    elements_count = new_elements_count;
-    segments_count = new_segments_count;
 
-    free();
-
-    // Generate SSBO buffer (+1 element)
-    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(Element) * (new_elements_count + 1));
-    void* ssbo_void_ptr = alloc_buffer(&ssbo_index, GL_SHADER_STORAGE_BUFFER, ssbo_size_bytes);
-    ssbo_mapped_ptr = static_cast<Element*>(ssbo_void_ptr);
-
-    // SSBO buffer is left with uninitialized data
-    // It will be written during ElementParams computation
+    internal_ensure_free_VBO();
 
     // Generate VBO buffer
     vbo_vertices_count = (GLsizei) (new_elements_count * (new_segments_count + 1));
@@ -95,15 +89,67 @@ void ShaderBuffers::re_alloc(size_t new_elements_count, size_t new_segments_coun
     // Unmap VBO buffer
     unmap_buffer(GL_ARRAY_BUFFER);
 
-    allocated = true;
+    vbo_allocated = true;
+    segments_count = new_segments_count;
+
+    internal_re_alloc_SSBO(new_elements_count);
+}
+
+void ShaderBuffers::internal_re_alloc_SSBO(size_t new_elements_count) {
+    if (ssbo_allocated && new_elements_count == elements_count) {
+        return;
+    }
+
+    internal_ensure_free_SSBO();
+
+    // Generate SSBO buffer (+1 element)
+    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(Element) * (new_elements_count + 1));
+    void* ssbo_void_ptr = alloc_buffer(&ssbo_index, GL_SHADER_STORAGE_BUFFER, ssbo_size_bytes);
+    ssbo_mapped_ptr = static_cast<Element*>(ssbo_void_ptr);
+
+    // SSBO buffer is left with uninitialized data
+    // It will be written during ElementParams computation
+
+    ssbo_allocated = true;
+    elements_count = new_elements_count;
+}
+
+void ShaderBuffers::free() {
+    internal_ensure_free_VBO();
+    internal_ensure_free_SSBO();
+}
+
+void ShaderBuffers::internal_ensure_free_VBO() {
+    if (!vbo_allocated) {
+        return;
+    }
+
+    free_buffer(&vbo_index);
+    vbo_index = NULL;
+    vbo_vertices_count = NULL;
+
+    vbo_allocated = false;
+}
+
+void ShaderBuffers::internal_ensure_free_SSBO() {
+    if (!ssbo_allocated) {
+        return;
+    }
+
+    unmap_buffer(GL_SHADER_STORAGE_BUFFER);
+    ssbo_mapped_ptr = nullptr;
+    free_buffer(&ssbo_index);
+    ssbo_index = NULL;
+
+    ssbo_allocated = false;
 }
 
 Element *ShaderBuffers::get_buffer_ptr() {
-    return allocated ? ssbo_mapped_ptr : nullptr;
+    return (vbo_allocated && ssbo_allocated) ? ssbo_mapped_ptr : nullptr;
 }
 
 void ShaderBuffers::draw(UniformParams up, float zoom, sf::Vector2f look_at) {
-    if (!allocated) {
+    if (!vbo_allocated || !ssbo_allocated) {
         return;
     }
 
@@ -125,21 +171,4 @@ void ShaderBuffers::draw(UniformParams up, float zoom, sf::Vector2f look_at) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     sf::Shader::bind(nullptr);
-}
-
-void ShaderBuffers::free() {
-    if (!allocated) {
-        return;
-    }
-
-    unmap_buffer(GL_SHADER_STORAGE_BUFFER);
-    ssbo_mapped_ptr = nullptr;
-    free_buffer(&ssbo_index);
-    ssbo_index = NULL;
-
-    free_buffer(&vbo_index);
-    vbo_index = NULL;
-    vbo_vertices_count = NULL;
-
-    allocated = false;
 }
