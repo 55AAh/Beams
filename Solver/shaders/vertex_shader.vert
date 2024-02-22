@@ -22,17 +22,20 @@
     };
 
     struct UniformParams {
-        float EI, GJ;
+        float EI;
+        float initial_angle;
         float total_weight;
         float total_length;
+        float gap;
+        int elements_count;
     };
 
-    #define UP_ARRAY_SIZE 4
+    #define UP_ARRAY_SIZE 6
 
 #ifdef INSIDE_C_CODE
-    #define PACK_UP(arr, up) float arr[UP_ARRAY_SIZE] { up.EI, up.GJ, up.total_weight, up.total_length }
+    #define PACK_UP(arr, up) float arr[UP_ARRAY_SIZE] { up.EI, up.initial_angle, up.total_weight, up.total_length, up.gap, float(up.elements_count) }
 #else // INSIDE_C_CODE
-    #define UNPACK_UP(up, arr) UniformParams up = UniformParams(arr[0], arr[1], arr[2], arr[3]);
+    #define UNPACK_UP(up, arr) UniformParams up = UniformParams(arr[0], arr[1], arr[2], arr[3], arr[4], int(arr[5]));
 #endif
 
     ElementUWT calc_uwt(ElementParams ep, UniformParams up, float s);
@@ -87,7 +90,7 @@
 
     #define unpack_params(ep, up)   float u0 = ep.uwt.u, w0 = ep.uwt.w, t0 = ep.uwt.t, \
                                     m0 = ep.m, n0 = ep.n, q0 = ep.q, \
-                                    EI = up.EI, GJ = up.GJ
+                                    EI = up.EI
 
     ElementUWT calc_uwt(ElementParams ep, UniformParams up, float s) {
         unpack_params(ep, up);

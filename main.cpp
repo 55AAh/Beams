@@ -40,7 +40,7 @@ void draw_beams(Solver* solver, ShaderBuffers* shader_buffers) {
     else {
         if (ImGui::Button("Setup problem") || debug_auto_setup) {
             debug_auto_setup = false;
-            UniformParams new_up { 1, 1, 1000, 3 * 3.1415926 / 4 };
+            UniformParams new_up { 1, 0, 1000, 3 * 3.1415926 / 4, 10, elements_count };
             solver->setup(new_up);
             shader_buffers->re_alloc(elements_count, segments_count);
         }

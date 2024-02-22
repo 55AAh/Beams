@@ -21,7 +21,7 @@ public:
 
     [[nodiscard]] bool was_setup() const { return _was_setup; }
 
-    void traverse(float theta, ElementParams* elements, size_t elements_count, size_t begin, size_t end) const;
+    void traverse(float theta, ElementParams* elements, size_t begin, size_t end) const;
 
     void forget();
 

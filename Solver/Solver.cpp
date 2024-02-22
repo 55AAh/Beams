@@ -11,8 +11,8 @@ ElementUWT construct_uwt(float u, float w, float t) {
     return ElementUWT { u, w, t };
 }
 
-void Solver::traverse(float theta, ElementParams *elements, size_t elements_count, size_t begin, size_t end) const {
-    float each_length = up.total_length / (float)elements_count;
+void Solver::traverse(float theta, ElementParams *elements, size_t begin, size_t end) const {
+    float each_length = up.total_length / (float)up.elements_count;
 
     ElementParams ep0 = begin == 0 ?
             ElementParams{ ElementUWT { 0, 0, theta }, 0.0, 0, 0 }
