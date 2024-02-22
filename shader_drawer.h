@@ -27,6 +27,7 @@ private:
     Solver solver;
     ShaderBuffers sb;
     int segments_count;
+    float zoom;
 };
 
 

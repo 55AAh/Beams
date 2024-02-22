@@ -19,7 +19,7 @@ public:
 
     Element* get_buffer_ptr();
 
-    void draw(UniformParams up);
+    void draw(UniformParams up, float zoom = 1.0f);
 
     void free();
 

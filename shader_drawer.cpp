@@ -5,6 +5,7 @@
 
 ShaderDrawer::ShaderDrawer(int new_segments_count) {
     segments_count = new_segments_count;
+    zoom = 1.0f;
 }
 
 void ShaderDrawer::setup(UniformParams new_up) {
@@ -59,6 +60,8 @@ void ShaderDrawer::process_gui() {
         tweak(segments_count);
     }
 
+    ImGui::SliderFloat("Zoom", &zoom, 0.1, 10);
+
     if (!solver.was_setup()) {
         return;
     }
@@ -72,15 +75,17 @@ void ShaderDrawer::process_gui() {
     }
 }
 
-void draw_grid_n_axes() {
+void draw_grid_n_axes(float zoom, float line_gap = 0.1) {
     // Grid
     glBegin(GL_LINES);
     glColor3f(0.1, 0.1, 0.1);
-    for (int i = -10; i <= 10; ++i) {
-        glVertex2f(-1, (float)i / 10);
-        glVertex2f(+1, (float)i / 10);
-        glVertex2f((float)i / 10, -1);
-        glVertex2f((float)i / 10, +1);
+    int lines_cnt = int(1.0 / line_gap / zoom);
+    float scale_factor = zoom * line_gap;
+    for (int i = -lines_cnt; i <= lines_cnt; ++i) {
+        glVertex2f(-1, (float)i * scale_factor);
+        glVertex2f(+1, (float)i * scale_factor);
+        glVertex2f((float)i * scale_factor, -1);
+        glVertex2f((float)i * scale_factor, +1);
     }
 
     // Axes
@@ -93,6 +98,6 @@ void draw_grid_n_axes() {
 }
 
 void ShaderDrawer::draw() {
-    draw_grid_n_axes();
-    sb.draw(solver.up);
+    draw_grid_n_axes(zoom, 0.1);
+    sb.draw(solver.up, zoom);
 }

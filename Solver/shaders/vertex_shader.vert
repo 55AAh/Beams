@@ -81,7 +81,7 @@
 
         Element el_s = calc_EQLINK(elements[element_index], up, s);
 
-        gl_Position = vec4(el_s.full.x, el_s.full.y, 0.0, 1.0);
+        gl_Position = vec4(el_s.full.x * zoom, el_s.full.y * zoom, 0.0, 1.0);
     //    gl_Position = vec4(elements[element].uwt.u + s / 3, elements[element].uwt.w + s*s / 3, 0.0, 1.0);
         int _color = element_index % 3;
         vertexColor = vec3(_color == 0, _color == 1, _color == 2);
