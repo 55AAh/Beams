@@ -3,9 +3,13 @@
 #include "imgui.h"
 
 
-ShaderDrawer::ShaderDrawer(int new_segments_count) {
+ShaderDrawer::ShaderDrawer(sf::RenderWindow* new_window, int new_segments_count) {
     segments_count = new_segments_count;
+    window = new_window;
     zoom = 0.1f;
+    mouse_pressed = false;
+    mouse_initial = sf::Vector2i(0, 0);
+    look_at_initial = sf::Vector2f(0.0f, 0.0f);
     show_demo_window = false;
 }
 
@@ -31,6 +35,36 @@ void ShaderDrawer::ensure_sb() {
 void ShaderDrawer::forget() {
     solver.forget();
     sb.free();
+}
+
+void ShaderDrawer::process_event(sf::Event event) {
+    if (ImGui::GetIO().WantCaptureMouse) {
+        return;
+    }
+
+    if (event.type == sf::Event::MouseWheelMoved) {
+        zoom *= pow(2.0f, (float)event.mouseWheel.delta / 10.0f);
+        zoom = fminf(fmaxf(zoom, powf(2, -10)), powf(2, 10));
+    }
+    else if (event.type == sf::Event::MouseButtonPressed) {
+        if (event.mouseButton.button == sf::Mouse::Button::Left) {
+            mouse_pressed = true;
+            mouse_initial = sf::Vector2i(event.mouseButton.x, event.mouseButton.y);
+            look_at_initial = look_at;
+        }
+    }
+    else if (event.type == sf::Event::MouseButtonReleased) {
+        if (event.mouseButton.button == sf::Mouse::Button::Left) {
+            mouse_pressed = false;
+        }
+    }
+    else if (event.type == sf::Event::MouseMoved) {
+        if (mouse_pressed) {
+            sf::Vector2u window_size = window->getSize();
+            look_at.x = look_at_initial.x - float(event.mouseMove.x - mouse_initial.x) / float(window_size.x) * 2.0f / zoom;
+            look_at.y = look_at_initial.y + float(event.mouseMove.y - mouse_initial.y) / float(window_size.y) * 2.0f / zoom;
+        }
+    }
 }
 
 static bool debug_auto_setup = true;
@@ -77,8 +111,6 @@ void ShaderDrawer::process_gui() {
         tweak(segments_count);
     }
 
-    ImGui::SliderFloat("Zoom", &zoom, 0.1, 10);
-
     if (!solver.was_setup()) {
         return;
     }
@@ -92,29 +124,28 @@ void ShaderDrawer::process_gui() {
     }
 }
 
-void draw_grid_n_axes(float zoom, float line_gap = 0.1) {
+void draw_grid_n_axes(float zoom, sf::Vector2f look_at, float line_gap = 0.1) {
     // Grid
     glBegin(GL_LINES);
     glColor3f(0.1, 0.1, 0.1);
     int lines_cnt = int(1.0 / line_gap / zoom);
-    float scale_factor = zoom * line_gap;
-    for (int i = -lines_cnt; i <= lines_cnt; ++i) {
-        glVertex2f(-1, (float)i * scale_factor);
-        glVertex2f(+1, (float)i * scale_factor);
-        glVertex2f((float)i * scale_factor, -1);
-        glVertex2f((float)i * scale_factor, +1);
+    for (int i = -lines_cnt - 1; i <= lines_cnt + 1; ++i) {
+        glVertex2f(-1, ((float)i * line_gap - fmodf(look_at.y, line_gap)) * zoom);
+        glVertex2f(+1, ((float)i * line_gap - fmodf(look_at.y, line_gap)) * zoom);
+        glVertex2f(((float)i * line_gap - fmodf(look_at.x, line_gap)) * zoom, -1);
+        glVertex2f(((float)i * line_gap - fmodf(look_at.x, line_gap)) * zoom, +1);
     }
 
     // Axes
     glColor3f(1, 1, 1);
-    glVertex2d(-1, 0);
-    glVertex2d(1, 0);
-    glVertex2d(0, -1);
-    glVertex2d(0, 1);
+    glVertex2d(-1, -look_at.y * zoom);
+    glVertex2d(+1, -look_at.y * zoom);
+    glVertex2d(-look_at.x * zoom, -1);
+    glVertex2d(-look_at.x * zoom, +1);
     glEnd();
 }
 
 void ShaderDrawer::draw() {
-    draw_grid_n_axes(zoom, 0.1);
-    sb.draw(solver.up, zoom);
+    draw_grid_n_axes(zoom, look_at, 0.1);
+    sb.draw(solver.up, zoom, look_at);
 }

@@ -102,7 +102,7 @@ Element *ShaderBuffers::get_buffer_ptr() {
     return allocated ? ssbo_mapped_ptr : nullptr;
 }
 
-void ShaderBuffers::draw(UniformParams up, float zoom) {
+void ShaderBuffers::draw(UniformParams up, float zoom, sf::Vector2f look_at) {
     if (!allocated) {
         return;
     }
@@ -112,6 +112,7 @@ void ShaderBuffers::draw(UniformParams up, float zoom) {
     PACK_UP(up_array, up);
     shader.setUniformArray("up_array", up_array, UP_ARRAY_SIZE);
     shader.setUniform("zoom", zoom);
+    shader.setUniform("look_at", look_at);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_index);
     glEnableVertexAttribArray(0);

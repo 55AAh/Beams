@@ -19,7 +19,7 @@ public:
 
     Element* get_buffer_ptr();
 
-    void draw(UniformParams up, float zoom = 1.0f);
+    void draw(UniformParams up, float zoom = 1.0f, sf::Vector2f look_at = sf::Vector2f(0.0, 0.0));
 
     void free();
 

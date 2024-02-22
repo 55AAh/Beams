@@ -4,14 +4,19 @@
 #include "Solver.h"
 #include "shader_buffers.h"
 
+#include <SFML/Graphics.hpp>
+#include "SFML/Window/Event.hpp"
+
 
 class ShaderDrawer {
 public:
-    explicit ShaderDrawer(int new_segments_count = 10);
+    ShaderDrawer(sf::RenderWindow* window, int new_segments_count = 10);
 
     void setup(UniformParams new_up);
 
     void tweak(int new_segments_count);
+
+    void process_event(sf::Event event);
 
     void process_gui();
 
@@ -27,7 +32,12 @@ private:
     Solver solver;
     ShaderBuffers sb;
     int segments_count;
+    sf::RenderWindow *window;
     float zoom;
+    sf::Vector2f look_at;
+    bool mouse_pressed;
+    sf::Vector2i mouse_initial;
+    sf::Vector2f look_at_initial;
     bool show_demo_window;
 };
 

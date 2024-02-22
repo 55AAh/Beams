@@ -80,6 +80,7 @@
     };
     uniform float up_array[UP_ARRAY_SIZE];
     uniform float zoom;
+    uniform vec2 look_at;
 
     out vec3 vertexColor;
 
@@ -94,7 +95,7 @@
         SolutionCorr corr_s = EQLINK_link_corr(up, el_0.full, el_0.base, el_0.corr, s);
         SolutionFull full_s = EQLINK_link_full(up, el_0.full, el_0.base, base_s, corr_s, s);
 
-        gl_Position = vec4(full_s.x * zoom, full_s.y * zoom, 0.0, 1.0);
+        gl_Position = vec4((full_s.x - look_at.x) * zoom, (full_s.y - look_at.y) * zoom, 0.0, 1.0);
         int _color = element_index % 3;
         vertexColor = vec3(_color == 0, _color == 1, _color == 2);
     }

@@ -25,7 +25,7 @@ int main() {
         abort();
     }
 
-    ShaderDrawer sd;
+    ShaderDrawer sd(&window);
 
     sf::Clock deltaClock;
     bool running = true;
@@ -44,6 +44,8 @@ int main() {
             // Window was resized
             else if (event.type == sf::Event::Resized)
                 glViewport(0, 0, (GLsizei) event.size.width, (GLsizei) event.size.height);
+
+            sd.process_event(event);
 
         }
 
