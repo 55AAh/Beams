@@ -17,7 +17,7 @@ public:
 
     void re_alloc(size_t new_elements_count, size_t new_segments_count);
 
-    ElementParams* get_buffer_ptr();
+    Element* get_buffer_ptr();
 
     void draw(UniformParams up);
 
@@ -33,7 +33,7 @@ private:
     GLsizei vbo_vertices_count = NULL;
 
     GLuint ssbo_index = NULL;
-    ElementParams* ssbo_mapped_ptr = nullptr;
+    Element* ssbo_mapped_ptr = nullptr;
 
     size_t elements_count = NULL, segments_count = NULL;
 };

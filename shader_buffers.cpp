@@ -69,9 +69,9 @@ void ShaderBuffers::re_alloc(size_t new_elements_count, size_t new_segments_coun
     free();
 
     // Generate SSBO buffer
-    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(ElementParams) * new_elements_count);
+    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(Element) * new_elements_count);
     void* ssbo_void_ptr = alloc_buffer(&ssbo_index, GL_SHADER_STORAGE_BUFFER, ssbo_size_bytes);
-    ssbo_mapped_ptr = static_cast<ElementParams*>(ssbo_void_ptr);
+    ssbo_mapped_ptr = static_cast<Element*>(ssbo_void_ptr);
 
     // SSBO buffer is left with uninitialized data
     // It will be written during ElementParams computation
@@ -98,7 +98,7 @@ void ShaderBuffers::re_alloc(size_t new_elements_count, size_t new_segments_coun
     allocated = true;
 }
 
-ElementParams *ShaderBuffers::get_buffer_ptr() {
+Element *ShaderBuffers::get_buffer_ptr() {
     return allocated ? ssbo_mapped_ptr : nullptr;
 }
 

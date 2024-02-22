@@ -63,13 +63,12 @@ void ShaderDrawer::process_gui() {
         return;
     }
 
-    static float theta = 0;
-    ImGui::SliderFloat("theta", &theta, 0, PI / 2);
+    ImGui::SliderFloat("initial_angle", &solver.up.initial_angle, 0, PI / 2);
 
     // Compute shader buffers
-    ElementParams* element_params = sb.get_buffer_ptr();
-    if (element_params != nullptr) {
-        solver.traverse(theta, element_params, 0, solver.up.elements_count - 1);
+    Element* elements = sb.get_buffer_ptr();
+    if (elements != nullptr) {
+        solver.traverse(elements, 0, solver.up.elements_count - 1);
     }
 }
 
