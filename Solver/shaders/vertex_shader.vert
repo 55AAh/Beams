@@ -9,11 +9,16 @@
 // Those definitions would be shared between C and GLSL code
 #ifndef ONLY_IMPLEMENT_EQLINK
 
+    struct Basis {
+        float t[2];
+        float n[2];
+    };
+
     struct SolutionFull {
         float x, y;
         float M;
         float T;
-        float t[2], n[2];
+        Basis tn;
         float Fx, Fy;
     };
 
@@ -21,7 +26,7 @@
         float u, w;
         float M;
         float T;
-        float t[2], n[2];
+        Basis tn;
     };
 
     struct SolutionCorr {
@@ -55,7 +60,12 @@
     #define UNPACK_UP(up, arr) UniformParams up = UniformParams(arr[0], arr[1], arr[2], arr[3], arr[4], int(arr[5]));
 #endif
 
-    Element calc_EQLINK(Element el, UniformParams up, float s);
+    SolutionFull EQLINK_setup_initial_border(UniformParams up);
+    SolutionBase EQLINK_setup_base(UniformParams up, SolutionFull full0);
+    SolutionCorr EQLINK_setup_corr(UniformParams up, SolutionFull full0, SolutionBase base0);
+    SolutionBase EQLINK_link_base(UniformParams up, SolutionFull full0, SolutionBase base0, float s);
+    SolutionCorr EQLINK_link_corr(UniformParams up, SolutionFull full0, SolutionBase base0, SolutionCorr corr0, float s);
+    SolutionFull EQLINK_link_full(UniformParams up, SolutionFull full0, SolutionBase base0, SolutionBase base_s, SolutionCorr corr_s, float s);
 
 
 
@@ -79,10 +89,12 @@
         float s = aPos.x * up.total_length / float(elements.length());
         int element_index = int(aPos.y);
 
-        Element el_s = calc_EQLINK(elements[element_index], up, s);
+        Element el_0 = elements[element_index];
+        SolutionBase base_s = EQLINK_link_base(up, el_0.full, el_0.base, s);
+        SolutionCorr corr_s = EQLINK_link_corr(up, el_0.full, el_0.base, el_0.corr, s);
+        SolutionFull full_s = EQLINK_link_full(up, el_0.full, el_0.base, base_s, corr_s, s);
 
-        gl_Position = vec4(el_s.full.x * zoom, el_s.full.y * zoom, 0.0, 1.0);
-    //    gl_Position = vec4(elements[element].uwt.u + s / 3, elements[element].uwt.w + s*s / 3, 0.0, 1.0);
+        gl_Position = vec4(full_s.x * zoom, full_s.y * zoom, 0.0, 1.0);
         int _color = element_index % 3;
         vertexColor = vec3(_color == 0, _color == 1, _color == 2);
     }
@@ -100,6 +112,251 @@
     #ifdef INSIDE_C_CODE
         #include <cmath> // Trig functions are available in GLSL by default
     #endif // INSIDE_C_CODE
+
+    SolutionFull EQLINK_setup_initial_border(UniformParams up) {
+        // Beam's left end is hinged at a known angle
+        float x = 0.0f, y = 0.0f;
+        float M = 0.0f;
+        float T = up.initial_angle;
+        Basis tn;
+        tn.t[0] = cos(T); tn.t[1] = sin(T);
+        tn.n[0] = -sin(T); tn.n[1] = cos(T);
+
+        // Support reaction force is upward
+        float each_stand_load = up.total_weight / 2.0f;
+        float Fx = 0.0f;
+        float Fy = each_stand_load;
+
+        SolutionFull border;
+        border.x = x;
+        border.y = y;
+        border.M = M;
+        border.T = T;
+        border.tn = tn;
+        border.Fx = Fx;
+        border.Fy = Fy;
+
+        return border;
+    }
+
+    SolutionBase EQLINK_setup_base(UniformParams up, SolutionFull full0) {
+        // Base solution accounts for geometry
+        float u = full0.x, w = full0.y;
+        float T = full0.T;
+        float t[2], n[2];
+        Basis tn = full0.tn;
+
+        // Force induces a moment in the middle of the element
+        // Since we don't know the curvature yet, we treat the element as straight
+        float each_el_length = up.total_length / float(up.elements_count);
+        float middle_s = each_el_length / 2.0f;
+        float F_arm_x = full0.tn.t[0] * middle_s, F_arm_y = full0.tn.t[1] * middle_s;
+        // Moment is <0 when beam goes to the right (because F then induces a counter-clockwise rotation)
+        float M = F_arm_x * full0.Fy - F_arm_y * full0.Fx;
+
+        SolutionBase base0;
+        base0.u = u;
+        base0.w = w;
+        base0.M = M;
+        base0.T = T;
+        base0.tn = tn;
+
+        return base0;
+    }
+
+    SolutionCorr EQLINK_setup_corr(UniformParams up, SolutionFull full0, SolutionBase base0) {
+        // No offset or rotation at the beginning
+        float u = 0.0, w = 0.0;
+        float T = 0.0;
+
+        // Since full moment is zero (for hinge), the moment induced by F in base solution
+        // should be compensated in correction solution
+        float M = -base0.M;
+
+        // Upward force is expressed in basis (at the middle)
+        float each_el_length = up.total_length / float(up.elements_count);
+        SolutionBase base_mid = EQLINK_link_base(up, full0, base0, each_el_length / 2); // TODO
+        float N = full0.Fy * base_mid.tn.t[1];
+        float Q = full0.Fy * base_mid.tn.n[1];
+
+        // Each element has weight
+        float each_el_weight = up.total_weight / float(up.elements_count);
+        float P = each_el_weight;
+
+        // Its force is also expressed in basis (at the middle)
+        float Pt = P * base_mid.tn.t[1];
+        float Pn = P * base_mid.tn.n[1];
+
+        SolutionCorr corr0;
+        corr0.u = u;
+        corr0.w = w;
+        corr0.M = M;
+        corr0.T = T;
+        corr0.N = N;
+        corr0.Q = Q;
+        corr0.Pt = Pt;
+        corr0.Pn = Pn;
+
+        return corr0;
+    }
+
+    float calc_K(UniformParams up, float M) {
+        // Moment induces curvature
+        float K = M / up.EI;
+        return K;
+    }
+
+    Basis rotate_basis(Basis tn0, float phi) {
+        float rot_mat_s[2][2];
+        rot_mat_s[0][0] = cos(phi); rot_mat_s[0][1] = sin(phi);
+        rot_mat_s[1][0] = -sin(phi); rot_mat_s[1][1] = cos(phi);
+
+        Basis tn_s;
+        tn_s.t[0] = rot_mat_s[0][0] * tn0.t[0] + rot_mat_s[0][1] * tn0.n[0];
+        tn_s.t[1] = rot_mat_s[0][0] * tn0.t[1] + rot_mat_s[0][1] * tn0.n[1];
+        tn_s.n[0] = rot_mat_s[1][0] * tn0.t[0] + rot_mat_s[1][1] * tn0.n[0];
+        tn_s.n[1] = rot_mat_s[1][0] * tn0.t[1] + rot_mat_s[1][1] * tn0.n[1];
+
+        return tn_s;
+    }
+
+    SolutionBase EQLINK_link_base(UniformParams up, SolutionFull full0, SolutionBase base0, float s) {
+        // Moment is constant
+        float M = base0.M;
+        float K = calc_K(up, M);
+
+        // This moment induces curvature
+        float phi = s * K;
+
+        // Coordinates are shifted
+        float shift_mat_s[2];
+        shift_mat_s[0] = 1 / K * sin(phi);
+        shift_mat_s[1] = 1 / K * (1 - cos(phi));
+
+        float du = shift_mat_s[0] * full0.tn.t[0] + shift_mat_s[1] * full0.tn.n[0];
+        float dw = shift_mat_s[0] * full0.tn.t[1] + shift_mat_s[1] * full0.tn.n[1];
+        float u_s = base0.u + du;
+        float w_s = base0.w + dw;
+
+        // Basis is rotated
+        float T = base0.T;
+        float T_s = T + phi;
+        Basis tn_s = rotate_basis(full0.tn, phi);
+
+        SolutionBase base_s;
+        base_s.u = u_s;
+        base_s.w = w_s;
+        base_s.M = M;
+        base_s.T = T_s;
+        base_s.tn = tn_s;
+
+        return base_s;
+    }
+
+    SolutionCorr EQLINK_link_corr(UniformParams up, SolutionFull full0, SolutionBase base0, SolutionCorr corr0, float s) {
+        float K = calc_K(up, base0.M);
+        float R = 1 / K;
+        float phi = s * K;
+        float sin_phi = sin(phi), cos_phi = cos(phi);
+
+        float u0 = corr0.u, w0 = corr0.w;
+        float T0 = corr0.T;
+        float M0 = corr0.M;
+        float N0 = corr0.N, Q0 = corr0.Q;
+        float Pt = corr0.Pt, Pn = corr0.Pn;
+        float f = 0;
+        float EJ = up.EI;
+
+        float fact[7] = { 1, 1, 2, 6, 24, 120, 720 };
+
+        float u_s = 0;
+        u_s += u0 * cos_phi;
+        u_s += w0 * sin_phi;
+        u_s += T0 * s * (phi / 2 - pow(phi, 3) / fact[4] + pow(phi, 5) / fact[6]);
+        u_s += Q0 * (pow(s, 3) / EJ * (phi / fact[4] - 2 * pow(phi, 3) / fact[6]) - f * s * (phi / 2 - pow(phi, 3) / 2 / fact[3] + pow(phi, 5) / 2 / fact[5]));
+        u_s += N0 * (-pow(s, 3) / EJ * (pow(phi, 2) / fact[5]) - f * s * (1 - 2 * pow(phi, 2) / 3 + 3 * pow(phi, 4) / fact[5]));
+        u_s += M0 * pow(s, 2) / EJ * (phi / fact[3] - pow(phi, 3) / fact[5]);
+        u_s += Pn * (pow(s, 4) / EJ * (phi / fact[5]) + f * pow(s, 2) * (-phi / fact[3] + 2 * pow(phi, 3) / fact[5]));
+        u_s += Pt * (-pow(s, 4) / EJ * (pow(phi, 2) / fact[6]) - f * pow(s, 2) * (1 / 2 - pow(phi, 2) / 2 / fact[3] + pow(phi, 4) / 2 / fact[5]));
+
+        float w_s = 0;
+        w_s += u0 * -sin_phi;
+        w_s += w0 * cos_phi;
+        w_s += T0 * R * sin_phi;
+        w_s += Q0 * (pow(s, 3) / EJ * (1 / fact[3] - 2 * pow(phi, 2) / fact[5]) + f * s * (pow(phi, 2) / fact[3] - 2 * pow(phi, 4) / fact[5]));
+        w_s += N0 * (-pow(s, 3) / EJ * (phi / fact[4] - 2 * pow(phi, 3) / fact[6]) + f * s * (phi / 2 - pow(phi, 3) / 2 / fact[3] + pow(phi, 5) / 2 / fact[5]));
+        w_s += M0 * pow(s, 2) / EJ * (1 / 2 - pow(phi, 2) / fact[4] + pow(phi, 4) / fact[6]);
+        w_s += Pn * (pow(s, 4) / EJ * (1 / fact[4] - 2 * pow(phi, 2) / fact[6]) + f * pow(s, 2) * (pow(phi, 2) / fact[4] - 2 * pow(phi, 4) / fact[6]));
+        w_s += Pt * (pow(s, 4) / EJ * (-phi / fact[5]) + f * pow(s, 2) * (phi / fact[3] - 2 * pow(phi, 3) / fact[5]));
+
+        float T_s = 0;
+        T_s += T0;
+        T_s += Q0 * pow(s, 2) / EJ * (1 / 2 - pow(phi, 2) / fact[4] + pow(phi, 4) / fact[6]);
+        T_s += N0 * (-pow(s, 2) / EJ * (phi / fact[3] - pow(phi, 3) / fact[5]));
+        T_s += M0 * s / EJ;
+        T_s += Pn * pow(s, 3) / EJ * (1 / fact[3] - pow(phi, 2) / fact[5]);
+        T_s += Pt * pow(s, 3) / EJ * (-phi / fact[4] + pow(phi, 3) / fact[6]);
+
+        float Q_s = 0;
+        Q_s += Q0 * cos_phi;
+        Q_s += N0 * -sin_phi;
+        Q_s += Pn * R * sin_phi;
+        Q_s += Pt * s * (-phi / 2 + pow(phi, 3) / fact[4] - pow(phi, 5) / fact[6]);
+
+        float N_s = 0;
+        N_s += Q0 * sin_phi;
+        N_s += N0 * cos_phi;
+        N_s += Pn * s * (phi / 2 - pow(phi, 3) / fact[4] + pow(phi, 5) / fact[6]);
+        N_s += Pt * R * sin_phi;
+
+        float M_s = 0;
+        M_s += Q0 * R * sin_phi;
+        M_s += N0 * s * (-phi / 2 + pow(phi, 3) / fact[4] - pow(phi, 5) / fact[6]) * N0;
+        M_s += M0;
+        M_s += Pn * pow(s, 2) * (1 / 2 - pow(phi, 2) / fact[4] + pow(phi, 4) / fact[6]);
+        M_s += Pt * pow(s, 2) * (-phi / fact[3] + pow(phi, 3) / fact[5]);
+
+        SolutionCorr corr_s;
+        corr_s.u = u_s;
+        corr_s.w = w_s;
+        corr_s.M = M_s;
+        corr_s.T = T_s;
+        corr_s.N = N_s;
+        corr_s.Q = Q_s;
+        corr_s.Pt = Pt;
+        corr_s.Pn = Pn;
+
+        return corr_s;
+    }
+
+    SolutionFull EQLINK_link_full(UniformParams up, SolutionFull full0, SolutionBase base0, SolutionBase base_s, SolutionCorr corr_s, float s) {
+        float diff_u = corr_s.u * base_s.tn.t[0] + corr_s.w * base_s.tn.n[0];
+        float diff_w = corr_s.u * base_s.tn.t[1] + corr_s.w * base_s.tn.n[1];
+        float diff_M = corr_s.M;
+        float diff_T = corr_s.T;
+
+        float x_s = base_s.u + diff_u;
+        float y_s = base_s.w + diff_w;
+        float M_s = base_s.M + diff_M;
+        float T_s = base_s.T + diff_T;
+
+        float diff_T_bc = T_s - base0.T;
+        Basis tn_s = rotate_basis(full0.tn, diff_T_bc);
+
+        float Fx_s = corr_s.N * base_s.tn.t[0] + corr_s.Q * base_s.tn.n[0];
+        float Fy_s = corr_s.N * base_s.tn.t[1] + corr_s.Q * base_s.tn.n[1];
+
+        SolutionFull full_s;
+        full_s.x = x_s;
+        full_s.y = y_s;
+        full_s.M = M_s;
+        full_s.T = T_s;
+        full_s.tn = tn_s;
+        full_s.Fx = Fx_s;
+        full_s.Fy = Fy_s;
+
+        return full_s;
+    }
 
     Element calc_EQLINK(Element el0, UniformParams up, float s) {
         float u0 = el0.full.x, w0 = el0.full.y, t0 = el0.full.T, m0 = el0.full.M, n0 = 0.0, q0 = 0.0, EI = up.EI;
@@ -129,16 +386,15 @@
         float base_w = w0 + base_dw;
         float base_t = t0 + base_dt;
 
-        // construct
         SolutionFull full_s;
         full_s.x = base_u;
         full_s.y = base_w;
         full_s.M = 2.0;
         full_s.T = base_t;
-        full_s.t[0] = 0.0f;
-        full_s.t[1] = 0.0f;
-        full_s.n[0] = 0.0f;
-        full_s.n[1] = 0.0f;
+        full_s.tn.t[0] = 0.0f;
+        full_s.tn.t[1] = 0.0f;
+        full_s.tn.n[0] = 0.0f;
+        full_s.tn.n[1] = 0.0f;
         full_s.Fx = 0.0f;
         full_s.Fy = 0.0f;
 
@@ -147,10 +403,10 @@
         base_s.w = 0.0f;
         base_s.M = 0.0f;
         base_s.T = 0.0f;
-        base_s.t[0] = 0.0f;
-        base_s.t[1] = 0.0f;
-        base_s.n[0] = 0.0f;
-        base_s.n[1] = 0.0f;
+        base_s.tn.t[0] = 0.0f;
+        base_s.tn.t[1] = 0.0f;
+        base_s.tn.n[0] = 0.0f;
+        base_s.tn.n[1] = 0.0f;
 
         SolutionCorr corr_s;
         corr_s.u = 0.0f;

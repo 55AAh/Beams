@@ -5,7 +5,7 @@
 
 ShaderDrawer::ShaderDrawer(int new_segments_count) {
     segments_count = new_segments_count;
-    zoom = 1.0f;
+    zoom = 0.1f;
 }
 
 void ShaderDrawer::setup(UniformParams new_up) {
@@ -43,8 +43,21 @@ void ShaderDrawer::process_gui() {
     else {
         if (ImGui::Button("Setup problem") || debug_auto_setup) {
             debug_auto_setup = false;
-            UniformParams new_up { 1, 0, 1000, 3 * 3.1415926 / 4, 10, 10 };
-            setup(new_up);
+
+            UniformParams up {};
+
+            // Problem statement
+            up.total_weight = 100 * PI * 4;
+            up.total_length = 10;
+            up.gap = 6;
+            up.initial_angle = -1.3762567175136284;
+            up.EI = 1000;
+
+            // FEM parameters
+            up.elements_count = 10;
+
+            // UniformParams new_up { 1, 0, 1000, 3 * 3.1415926 / 4, 10, 10 };
+            setup(up);
         }
     }
 
@@ -66,7 +79,7 @@ void ShaderDrawer::process_gui() {
         return;
     }
 
-    ImGui::SliderFloat("initial_angle", &solver.up.initial_angle, 0, PI / 2);
+    ImGui::SliderFloat("initial_angle", &solver.up.initial_angle, -PI / 2, PI / 2);
 
     // Compute shader buffers
     Element* elements = sb.get_buffer_ptr();
