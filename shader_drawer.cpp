@@ -123,15 +123,23 @@ void ShaderDrawer::process_gui() {
             }
         }
 
+        bool up_changed = false;
+
+        up_changed |= ImGui::SliderFloat("Total weight", &solver.up.total_weight, 0.1f, 10000.0f);
+        up_changed |= ImGui::SliderFloat("Total length", &solver.up.total_length, 0.1f, 30.0f);
+        up_changed |= ImGui::SliderFloat("EI", &solver.up.EI, 1.0f, 10000.0f);
+        solver.up.initial_angle = fmodf(solver.up.initial_angle, 2.0f * PI);
+        up_changed |= ImGui::SliderFloat("Theta", &solver.up.initial_angle, -PI / 2, PI / 2);
+
+        if (up_changed) {
+            solved = false;
+        }
+
+        ImGui::Spacing();
+
         bool elements_count_changed = ImGui::SliderInt("Elements", &solver.up.elements_count, 1, 100);
         if (elements_count_changed) {
             setup(solver.up);
-        }
-
-        solver.up.initial_angle = fmodf(solver.up.initial_angle, 2.0f * PI);
-        bool initial_angle_changed = ImGui::SliderFloat("Theta", &solver.up.initial_angle, -PI / 2, PI / 2);
-        if (initial_angle_changed) {
-            solved = false;
         }
 
         if (solver.was_setup()) {
