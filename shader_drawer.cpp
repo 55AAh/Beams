@@ -113,7 +113,7 @@ void ShaderDrawer::process_gui() {
                 up.total_weight = 100 * PI * 4;
                 up.total_length = 10;
                 up.gap = 6;
-                up.initial_angle = -1.3762567175136284;
+                up.initial_angle = 0;
                 up.EI = 1000;
 
                 // FEM parameters
