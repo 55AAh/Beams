@@ -10,7 +10,11 @@
 #include <imfilebrowser.h>
 
 
+#if C_USE_DOUBLE_PRECISION
+#define C_ImGuiDataType ImGuiDataType_Double
+#else
 #define C_ImGuiDataType ImGuiDataType_Float
+#endif
 
 inline bool ImGui_Slider(const char* label, C_float* v, C_float v_min, C_float v_max, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
     return ImGui::SliderScalar(label, C_ImGuiDataType, v, &v_min, &v_max, format, flags);

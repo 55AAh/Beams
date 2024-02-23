@@ -2,7 +2,14 @@
 #define SHADERBEAMS_SOLVER_H
 
 
+#define C_USE_DOUBLE_PRECISION 1
+
+#if C_USE_DOUBLE_PRECISION
+#define C_float double
+#else
 #define C_float float
+#endif
+
 
 #define C_Basis_FIELDS t, n
 struct C_Basis {
