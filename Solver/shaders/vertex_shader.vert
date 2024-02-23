@@ -9,11 +9,13 @@
 // Those definitions would be shared between C and GLSL code
 #ifndef ONLY_IMPLEMENT_EQLINK
 
+	#define Basis_FIELDS t, n
     struct Basis {
         float t[2];
         float n[2];
     };
 
+    #define SolutionFull_FIELDS x, y, M, T, tn, Fx, Fy
     struct SolutionFull {
         float x, y;
         float M;
@@ -22,6 +24,7 @@
         float Fx, Fy;
     };
 
+    #define SolutionBase_FIELDS u, w, M, T, tn
     struct SolutionBase {
         float u, w;
         float M;
@@ -29,6 +32,7 @@
         Basis tn;
     };
 
+    #define SolutionCorr_FIELDS u, w, M, T, N, Q, Pt, Pn
     struct SolutionCorr {
         float u, w;
         float M;
@@ -37,12 +41,14 @@
         float Pt, Pn;
     };
 
+    #define Element_FIELDS full, base, corr
     struct Element {
         SolutionFull full;
         SolutionBase base;
         SolutionCorr corr;
     };
 
+    #define UniformParams_FIELDS EI, initial_angle, total_weight, total_length, gap, elements_count
     struct UniformParams {
         float EI;
         float initial_angle;

@@ -3,6 +3,7 @@
 
 #include <SFML/Graphics/Shader.hpp>
 #include <GL/glew.h>
+#include <array>
 #include "Solver.h"
 
 
@@ -19,7 +20,7 @@ public:
 
     Element* get_buffer_ptr();
 
-    void draw(UniformParams up, float zoom = 1.0f, sf::Vector2f look_at = sf::Vector2f(0.0, 0.0), bool dashed = false);
+    void draw(UniformParams up, float zoom = 1.0f, std::array<float, 2> look_at = {0.0f, 0.0f}, bool dashed = false);
 
     void free();
 

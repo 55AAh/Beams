@@ -148,7 +148,7 @@ Element *ShaderBuffers::get_buffer_ptr() {
     return (vbo_allocated && ssbo_allocated) ? ssbo_mapped_ptr : nullptr;
 }
 
-void ShaderBuffers::draw(UniformParams up, float zoom, sf::Vector2f look_at, bool dashed) {
+void ShaderBuffers::draw(UniformParams up, float zoom, std::array<float, 2> look_at, bool dashed) {
     if (!vbo_allocated || !ssbo_allocated) {
         return;
     }
@@ -158,7 +158,7 @@ void ShaderBuffers::draw(UniformParams up, float zoom, sf::Vector2f look_at, boo
     PACK_UP(up_array, up);
     shader.setUniformArray("up_array", up_array, UP_ARRAY_SIZE);
     shader.setUniform("zoom", zoom);
-    shader.setUniform("look_at", look_at);
+    shader.setUniform("look_at", sf::Vector2f(look_at[0], look_at[1]));
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_index);
     glEnableVertexAttribArray(0);

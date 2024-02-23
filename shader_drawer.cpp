@@ -1,27 +1,36 @@
 #include "shader_drawer.h"
 
-#include "imgui.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+
+using json = nlohmann::json;
 
 
 ShaderDrawer::ShaderDrawer(sf::RenderWindow* new_window, int new_segments_count) {
-    segments_count = new_segments_count;
+    vp.segments_count = new_segments_count;
     window = new_window;
+    file_load_dialog = ImGui::FileBrowser(ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_ConfirmOnEnter);
+    file_load_dialog.SetTitle("Load ShaderBeams problem from file");
+    file_load_dialog.SetTypeFilters({ ".txt" });
+    file_save_dialog = ImGui::FileBrowser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir | ImGuiFileBrowserFlags_CloseOnEsc | ImGuiFileBrowserFlags_ConfirmOnEnter);
+    file_save_dialog.SetTitle("Save ShaderBeams problem to file");
+    file_save_dialog.SetTypeFilters({ ".txt" });
 }
 
 void ShaderDrawer::setup(UniformParams new_up) {
-    solved = false;
+    sp.solved = false;
     solver.setup(new_up);
     ensure_sb();
 }
 
 void ShaderDrawer::tweak(int new_segments_count) {
-    segments_count = new_segments_count;
+    vp.segments_count = new_segments_count;
     ensure_sb();
 }
 
 void ShaderDrawer::ensure_sb() {
     if (solver.was_setup()) {
-        sb.re_alloc(solver.up.elements_count, segments_count);
+        sb.re_alloc(solver.up.elements_count, vp.segments_count);
     }
     else {
         sb.free();
@@ -29,45 +38,79 @@ void ShaderDrawer::ensure_sb() {
 }
 
 void ShaderDrawer::forget() {
-    solved = false;
+    sp.solved = false;
     solver.forget();
     sb.free();
 }
 
-void ShaderDrawer::process_event(sf::Event event) {
-    if (ImGui::GetIO().WantCaptureMouse) {
-        return;
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VisualParams, VisualParams_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolverParams, SolverParams_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UniformParams, UniformParams_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Basis, Basis_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolutionFull, SolutionFull_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolutionBase, SolutionBase_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolutionCorr, SolutionCorr_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Element, Element_FIELDS)
+
+void ShaderDrawer::load_from_file(const std::filesystem::path& file_path) {
+    std::ifstream i(file_path);
+    json j;
+    i >> j;
+
+    vp = j["visual_params"];
+    sp = j["solver_params"];
+    UniformParams up = j["problem"];
+    json el_j = j["solution"];
+
+    assert(el_j.size() == up.elements_count + 1);
+
+    solver.setup(up);
+
+    ensure_sb();
+    Element *elements = sb.get_buffer_ptr();
+
+    for (auto& element : el_j) {
+        Element el = element.template get<Element>();
+        *elements++ = el;
+    }
+}
+
+void ShaderDrawer::save_to_file(const std::filesystem::path& file_path) {
+    Element *elements = sb.get_buffer_ptr();
+    json el_j;
+    for (size_t element_i = 0; element_i <= solver.up.elements_count; ++element_i) {
+        Element el = elements[element_i];
+        el_j.push_back(el);
     }
 
-    if (event.type == sf::Event::MouseWheelMoved) {
-        zoom *= pow(2.0f, (float)event.mouseWheel.delta / 10.0f);
-        zoom = fminf(fmaxf(zoom, powf(2, -10)), powf(2, 10));
-    }
-    else if (event.type == sf::Event::MouseButtonPressed) {
-        if (event.mouseButton.button == sf::Mouse::Button::Left) {
-            mouse_pressed = true;
-            mouse_initial = sf::Vector2i(event.mouseButton.x, event.mouseButton.y);
-            look_at_initial = look_at;
-        }
-    }
-    else if (event.type == sf::Event::MouseButtonReleased) {
-        if (event.mouseButton.button == sf::Mouse::Button::Left) {
-            mouse_pressed = false;
-        }
-    }
-    else if (event.type == sf::Event::MouseMoved) {
-        if (mouse_pressed) {
-            sf::Vector2u window_size = window->getSize();
-            look_at.x = look_at_initial.x - float(event.mouseMove.x - mouse_initial.x) / float(window_size.x) * 2.0f / zoom;
-            look_at.y = look_at_initial.y + float(event.mouseMove.y - mouse_initial.y) / float(window_size.y) * 2.0f / zoom;
-        }
-    }
+    json j;
+    j["visual_params"] = vp;
+    j["solver_params"] = sp;
+    j["problem"] = solver.up;
+    j["solution"] = el_j;
+
+    std::ofstream o(file_path);
+    o << std::setw(4) << j << std::endl;
+}
+
+void ShaderDrawer::process_event(sf::Event event) {
+    vp.process_event(event, window);
 }
 
 void ShaderDrawer::process_gui() {
     // Calculate the new frame
 
     if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Load from file")) {
+                file_load_dialog.Open();
+            }
+            if (ImGui::MenuItem("Save to file")) {
+                file_save_dialog.Open();
+            }
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("Menu"))
         {
             if (ImGui::MenuItem("Show demo window")) {
@@ -78,6 +121,20 @@ void ShaderDrawer::process_gui() {
     }
     ImGui::EndMainMenuBar();
 
+    if (file_load_dialog.HasSelected()) {
+        std::filesystem::path file_path = file_load_dialog.GetSelected();
+        load_from_file(file_path);
+        file_load_dialog.ClearSelected();
+    }
+
+    if (file_save_dialog.HasSelected()) {
+        std::filesystem::path file_path = file_save_dialog.GetSelected();
+        if (!file_path.has_extension())
+            file_path.replace_extension("txt");
+        save_to_file(file_path);
+        file_save_dialog.ClearSelected();
+    }
+
     if (show_demo_window) {
         ImGui::ShowDemoWindow(&show_demo_window);
     }
@@ -85,17 +142,15 @@ void ShaderDrawer::process_gui() {
     ImGui::Begin("Beams");
 
     if (ImGui::CollapsingHeader("Visual")) {
-        bool segments_count_changed = ImGui::SliderInt("Segments", &segments_count, 1, 10);
+        bool segments_count_changed = ImGui::SliderInt("Segments", &vp.segments_count, 1, 10);
         if (segments_count_changed) {
-            tweak(segments_count);
+            tweak(vp.segments_count);
         }
 
-        ImGui::Checkbox("Dashed lines", &dashed);
+        ImGui::Checkbox("Dashed lines", &vp.dashed);
     }
 
-    bool force_solve = false;
-    bool was_fit = fabsf(fit_deviation) < fit_threshold;
-
+    bool should_compute = false;
     if (ImGui::CollapsingHeader("Problem", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (solver.was_setup()) {
             if (ImGui::Button("Forget problem")) {
@@ -132,7 +187,7 @@ void ShaderDrawer::process_gui() {
         up_changed |= ImGui::SliderFloat("Theta", &solver.up.initial_angle, -PI / 2, PI / 2);
 
         if (up_changed) {
-            solved = false;
+            sp.solved = false;
         }
 
         ImGui::Spacing();
@@ -143,73 +198,51 @@ void ShaderDrawer::process_gui() {
         }
 
         if (solver.was_setup()) {
-            if (ImGui::CollapsingHeader("Solver")) {
-                ImGui::Checkbox("Auto-solve", &auto_solve);
-                force_solve = ImGui::Button("Solve");
-
-                ImGui::Spacing();
-
-                if (ImGui::Checkbox("AutoFit angle", &auto_fit_angle)) {
-                    was_fit = false;
-                }
-                ImGui::SliderFloat("Fit threshold", &fit_threshold, solver.up.total_length * 1e-5f, solver.up.total_length / 10.0f, "%.3g", ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderFloat("Fit rate", &fit_rate, 0.01f, 1.0f, "%.3g", ImGuiSliderFlags_Logarithmic);
-                if (auto_fit_angle) {
-                    ImGui::Text("Fitting%s", was_fit ? " finished" : "...");
-                    ImGui::Text("Theta: %f"
-                                "\nVertical deviation: % f"
-                                "\nThreshold:           %f",
-                                solver.up.initial_angle, fit_deviation, fit_threshold);
-                }
-            }
+            should_compute = sp.should_compute(&solver);
         }
     }
 
     // Compute
-    if (force_solve || (auto_solve && ((auto_fit_angle && !was_fit) || !solved))) {
+    if (should_compute && !file_load_dialog.IsOpened() && !file_save_dialog.IsOpened()) {
         Element *elements = sb.get_buffer_ptr();
         if (elements != nullptr) {
             solver.traverse(elements, 0, solver.up.elements_count - 1);
-            solved = true;
+            sp.solved = true;
 
-            if (auto_fit_angle) {
-                fit_deviation = elements[solver.up.elements_count].full.y;
-                float deviation_factor = fit_deviation / solver.up.total_length;
-                float angle_factor = (PI / 2.0f) * deviation_factor;
-                float angle_delta = angle_factor * fit_rate;
-                solver.up.initial_angle -= angle_delta;
-            }
+            sp.accept_solution(&solver, elements);
         }
     }
 
     ImGui::End(); // MainWindow
 }
 
-void draw_grid_n_axes(float zoom, sf::Vector2f look_at, float line_gap = 0.1) {
+void draw_grid_n_axes(float zoom, std::array<float, 2> look_at, float line_gap = 0.1) {
     // Grid
     glBegin(GL_LINES);
     glColor3f(0.1, 0.1, 0.1);
     int lines_cnt = int(1.0 / line_gap / zoom);
     for (int i = -lines_cnt - 1; i <= lines_cnt + 1; ++i) {
-        glVertex2f(-1, ((float)i * line_gap - fmodf(look_at.y, line_gap)) * zoom);
-        glVertex2f(+1, ((float)i * line_gap - fmodf(look_at.y, line_gap)) * zoom);
-        glVertex2f(((float)i * line_gap - fmodf(look_at.x, line_gap)) * zoom, -1);
-        glVertex2f(((float)i * line_gap - fmodf(look_at.x, line_gap)) * zoom, +1);
+        glVertex2f(-1, ((float)i * line_gap - fmodf(look_at[1], line_gap)) * zoom);
+        glVertex2f(+1, ((float)i * line_gap - fmodf(look_at[1], line_gap)) * zoom);
+        glVertex2f(((float)i * line_gap - fmodf(look_at[0], line_gap)) * zoom, -1);
+        glVertex2f(((float)i * line_gap - fmodf(look_at[0], line_gap)) * zoom, +1);
     }
 
     // Axes
     glColor3f(1, 1, 1);
-    glVertex2d(-1, -look_at.y * zoom);
-    glVertex2d(+1, -look_at.y * zoom);
-    glVertex2d(-look_at.x * zoom, -1);
-    glVertex2d(-look_at.x * zoom, +1);
+    glVertex2d(-1, -look_at[1] * zoom);
+    glVertex2d(+1, -look_at[1] * zoom);
+    glVertex2d(-look_at[0] * zoom, -1);
+    glVertex2d(-look_at[0] * zoom, +1);
     glEnd();
 }
 
 void ShaderDrawer::draw() {
-    draw_grid_n_axes(zoom, look_at, 0.1);
+    draw_grid_n_axes(vp.zoom, vp.look_at, 0.1);
 
-    if (solved) {
-        sb.draw(solver.up, zoom, look_at, dashed);
+    if (sp.solved) {
+        sb.draw(solver.up, vp.zoom, vp.look_at, vp.dashed);
     }
+    file_load_dialog.Display();
+    file_save_dialog.Display();
 }

@@ -66,3 +66,21 @@ set(IMGUI_SFML_FIND_SFML OFF)
 set(IMGUI_SFML_IMGUI_DEMO ON)
 FetchContent_MakeAvailable(imgui-sfml)
 target_link_libraries(${PROJECT_NAME} PRIVATE ImGui-SFML::ImGui-SFML)
+
+#imgui-filebrowser
+FetchContent_Declare(
+        imgui-filebrowser
+        GIT_REPOSITORY https://github.com/AirGuanZ/imgui-filebrowser
+        GIT_TAG a3d0f5053ab8dd1915e3fe9bc01978e76bbae5c5
+)
+FetchContent_MakeAvailable(imgui-filebrowser)
+target_include_directories(${PROJECT_NAME} PUBLIC ${imgui-filebrowser_SOURCE_DIR})
+
+#jsoncpp
+FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json
+        GIT_TAG 9cca280a4d0ccf0c08f47a99aa71d1b0e52f8d03
+)
+FetchContent_MakeAvailable(nlohmann_json)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
