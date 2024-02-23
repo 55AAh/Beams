@@ -1,9 +1,7 @@
-#include <fstream>
-#include <sstream>
 #include "shader_buffers.h"
 
-#include <regex>
-
+#include <fstream>
+#include <sstream>
 
 
 std::string read_file(const char* path) {
@@ -16,19 +14,11 @@ std::string read_file(const char* path) {
     return str;
 }
 
-std::string patch_vertex_shader(const std::string& original_code) {
-    std::regex re(R"(\/\/ % version (.*)\n)");
-    std::string patched_code = std::regex_replace(original_code, re, "#version $1\n");
-    return patched_code;
-}
-
 ShaderBuffers::ShaderBuffers() {
     const char* vs_path = "shaders\\vertex_shader.vert";
     const char* fs_path = "shaders\\fragment_shader.frag";
 
     std::string vs_code = read_file(vs_path);
-    vs_code = patch_vertex_shader(vs_code);
-
     std::string fs_code = read_file(fs_path);
 
     if (!shader.loadFromMemory(vs_code, fs_code)) {
@@ -103,9 +93,9 @@ void ShaderBuffers::internal_re_alloc_SSBO(size_t new_elements_count) {
     internal_ensure_free_SSBO();
 
     // Generate SSBO buffer (+1 element)
-    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(Element) * (new_elements_count + 1));
+    auto ssbo_size_bytes = (GLsizeiptr) (sizeof(GLSL_Element) * (new_elements_count + 1));
     void* ssbo_void_ptr = alloc_buffer(&ssbo_index, GL_SHADER_STORAGE_BUFFER, ssbo_size_bytes);
-    ssbo_mapped_ptr = static_cast<Element*>(ssbo_void_ptr);
+    ssbo_mapped_ptr = static_cast<GLSL_Element*>(ssbo_void_ptr);
 
     // SSBO buffer is left with uninitialized data
     // It will be written during ElementParams computation
@@ -144,21 +134,21 @@ void ShaderBuffers::internal_ensure_free_SSBO() {
     ssbo_allocated = false;
 }
 
-Element *ShaderBuffers::get_buffer_ptr() {
+GLSL_Element *ShaderBuffers::get_buffer_ptr() {
     return (vbo_allocated && ssbo_allocated) ? ssbo_mapped_ptr : nullptr;
 }
 
-void ShaderBuffers::draw(UniformParams up, float zoom, std::array<float, 2> look_at, bool dashed) {
+void ShaderBuffers::draw(GLSL_UniformParams up, GLSL_float zoom, std::array<GLSL_float, 2> look_at, bool dashed) {
     if (!vbo_allocated || !ssbo_allocated) {
         return;
     }
 
     sf::Shader::bind(&shader);
 
-    PACK_UP(up_array, up);
+    GLSL_PACK_UP(up_array, up);
     shader.setUniformArray("up_array", up_array, UP_ARRAY_SIZE);
     shader.setUniform("zoom", zoom);
-    shader.setUniform("look_at", sf::Vector2f(look_at[0], look_at[1]));
+    shader.setUniformArray("look_at", look_at.data(), 2);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_index);
     glEnableVertexAttribArray(0);

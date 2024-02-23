@@ -10,15 +10,21 @@
 #include <imfilebrowser.h>
 
 
+#define C_ImGuiDataType ImGuiDataType_Float
+
+inline bool ImGui_Slider(const char* label, C_float* v, C_float v_min, C_float v_max, const char* format = "%.3f", ImGuiSliderFlags flags = 0) {
+    return ImGui::SliderScalar(label, C_ImGuiDataType, v, &v_min, &v_max, format, flags);
+}
+
 #define VisualParams_FIELDS segments_count, dashed, zoom, look_at, mouse_pressed, mouse_initial, look_at_initial
 struct VisualParams {
     int segments_count = 0;
     bool dashed = false;
-    float zoom = 0.1f;
-    std::array<float, 2> look_at = {0.0f, 0.0f};
+    C_float zoom = 0.1f;
+    std::array<C_float, 2> look_at = {0.0, 0.0};
     bool mouse_pressed = false;
     std::array<int, 2> mouse_initial = {0, 0};
-    std::array<float, 2> look_at_initial = {0.0f, 0.0f};
+    std::array<C_float, 2> look_at_initial = {0.0, 0.0};
 
     void process_event(sf::Event event, sf::RenderWindow* window) {
         if (ImGui::GetIO().WantCaptureMouse) {
@@ -26,8 +32,8 @@ struct VisualParams {
         }
 
         if (event.type == sf::Event::MouseWheelMoved) {
-            zoom *= pow(2.0f, (float)event.mouseWheel.delta / 10.0f);
-            zoom = fminf(fmaxf(zoom, powf(2, -10)), powf(2, 10));
+            zoom *= pow(2.0, (C_float)event.mouseWheel.delta / 10.0);
+            zoom = fmin(fmax(zoom, pow(2, -10)), pow(2, 10));
         }
         else if (event.type == sf::Event::MouseButtonPressed) {
             if (event.mouseButton.button == sf::Mouse::Button::Left) {
@@ -44,8 +50,8 @@ struct VisualParams {
         else if (event.type == sf::Event::MouseMoved) {
             if (mouse_pressed) {
                 sf::Vector2u window_size = window->getSize();
-                look_at[0] = look_at_initial[0] - float(event.mouseMove.x - mouse_initial[0]) / float(window_size.x) * 2.0f / zoom;
-                look_at[1] = look_at_initial[1] + float(event.mouseMove.y - mouse_initial[1]) / float(window_size.y) * 2.0f / zoom;
+                look_at[0] = look_at_initial[0] - C_float(event.mouseMove.x - mouse_initial[0]) / C_float(window_size.x) * 2.0 / zoom;
+                look_at[1] = look_at_initial[1] + C_float(event.mouseMove.y - mouse_initial[1]) / C_float(window_size.y) * 2.0 / zoom;
             }
         }
     }
@@ -57,13 +63,13 @@ struct SolverParams {
     bool solved = false;
     bool auto_solve = true;
     bool auto_fit_angle = true;
-    float fit_threshold = 1e-3f;
-    float fit_rate = 0.1f;
-    float fit_deviation = 0.0f;
+    C_float fit_threshold = 1e-3;
+    C_float fit_rate = 0.1;
+    C_float fit_deviation = 0.0;
 
-    bool should_compute(Solver* solver) {
+    bool should_compute(C_Solver* solver) {
         bool force_solve = false;
-        bool was_fit = fabsf(fit_deviation) < fit_threshold;
+        bool was_fit = fabs(fit_deviation) < fit_threshold;
 
         if (ImGui::CollapsingHeader("Solver")) {
             ImGui::Checkbox("Auto-solve", &auto_solve);
@@ -74,8 +80,8 @@ struct SolverParams {
             if (ImGui::Checkbox("AutoFit angle", &auto_fit_angle)) {
                 was_fit = false;
             }
-            ImGui::SliderFloat("Fit threshold", &fit_threshold, solver->up.total_length * 1e-5f, solver->up.total_length / 10.0f, "%.3g", ImGuiSliderFlags_Logarithmic);
-            ImGui::SliderFloat("Fit rate", &fit_rate, 0.01f, 1.0f, "%.3g", ImGuiSliderFlags_Logarithmic);
+            ImGui_Slider("Fit threshold", &fit_threshold, solver->up.total_length * 1e-5, solver->up.total_length / 10.0, "%.3g", ImGuiSliderFlags_Logarithmic);
+            ImGui_Slider("Fit rate", &fit_rate, 0.01, 1.0, "%.3g", ImGuiSliderFlags_Logarithmic);
             if (auto_fit_angle) {
                 ImGui::Text("Fitting%s", was_fit ? " finished" : "...");
                 ImGui::Text("Theta: %f"
@@ -100,12 +106,12 @@ struct SolverParams {
         return false;
     }
 
-    void accept_solution(Solver* solver, Element *elements) {
+    void accept_solution(C_Solver* solver) {
         if (auto_fit_angle) {
-            fit_deviation = elements[solver->up.elements_count].full.y;
-            float deviation_factor = fit_deviation / solver->up.total_length;
-            float angle_factor = (PI / 2.0f) * deviation_factor;
-            float angle_delta = angle_factor * fit_rate;
+            fit_deviation = solver->elements[solver->up.elements_count].full.y;
+            C_float deviation_factor = fit_deviation / solver->up.total_length;
+            C_float angle_factor = (PI / 2.0) * deviation_factor;
+            C_float angle_delta = angle_factor * fit_rate;
             solver->up.initial_angle -= angle_delta;
         }
     }
@@ -116,7 +122,7 @@ class ShaderDrawer {
 public:
     explicit ShaderDrawer(sf::RenderWindow* window, int new_segments_count = 10);
 
-    void setup(UniformParams new_up);
+    void setup(C_UniformParams new_up);
 
     void tweak(int new_segments_count);
 
@@ -137,7 +143,11 @@ public:
 private:
     void ensure_sb();
 
-    Solver solver;
+    void compute(size_t begin, size_t end);
+
+    void copy_to_shaders(size_t begin, size_t end);
+
+    C_Solver solver;
     ShaderBuffers sb;
     sf::RenderWindow *window;
 

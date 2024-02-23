@@ -6,6 +6,76 @@
 using json = nlohmann::json;
 
 
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VisualParams, VisualParams_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolverParams, SolverParams_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(C_UniformParams, C_UniformParams_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(C_Basis, C_Basis_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(C_SolutionFull, C_SolutionFull_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(C_SolutionBase, C_SolutionBase_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(C_SolutionCorr, C_SolutionCorr_FIELDS)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(C_Element, C_Element_FIELDS)
+
+GLSL_Basis C2GLSL_Basis(C_Basis c_basis) {
+    return GLSL_Basis {
+        { GLSL_float(c_basis.t[0]), GLSL_float(c_basis.t[1]) },
+        { GLSL_float(c_basis.n[0]), GLSL_float(c_basis.n[1]) },
+    };
+}
+
+GLSL_SolutionFull C2GLSL_SolutionFull(C_SolutionFull c_full) {
+    return GLSL_SolutionFull {
+        GLSL_float(c_full.x),
+        GLSL_float(c_full.y),
+        GLSL_float(c_full.M),
+        GLSL_float(c_full.T),
+        C2GLSL_Basis(c_full.tn),
+        GLSL_float(c_full.Fx),
+        GLSL_float(c_full.Fy),
+    };
+}
+
+GLSL_SolutionBase C2GLSL_SolutionBase(C_SolutionBase c_base) {
+    return GLSL_SolutionBase {
+            GLSL_float(c_base.u),
+            GLSL_float(c_base.w),
+            GLSL_float(c_base.M),
+            GLSL_float(c_base.T),
+            C2GLSL_Basis(c_base.tn),
+    };
+}
+
+GLSL_SolutionCorr C2GLSL_SolutionCorr(C_SolutionCorr c_corr) {
+    return GLSL_SolutionCorr {
+            GLSL_float(c_corr.u),
+            GLSL_float(c_corr.w),
+            GLSL_float(c_corr.M),
+            GLSL_float(c_corr.T),
+            GLSL_float(c_corr.N),
+            GLSL_float(c_corr.Q),
+            GLSL_float(c_corr.Pt),
+            GLSL_float(c_corr.Pn),
+    };
+}
+
+GLSL_Element C2GLSL_Element(C_Element c_element) {
+    return GLSL_Element {
+            C2GLSL_SolutionFull(c_element.full),
+            C2GLSL_SolutionBase(c_element.base),
+            C2GLSL_SolutionCorr(c_element.corr),
+    };
+}
+
+GLSL_UniformParams C2GLSL_UniformParams(C_UniformParams c_up) {
+    return GLSL_UniformParams {
+            GLSL_float(c_up.EI),
+            GLSL_float(c_up.initial_angle),
+            GLSL_float(c_up.total_weight),
+            GLSL_float(c_up.total_length),
+            GLSL_float(c_up.gap),
+            c_up.elements_count,
+    };
+}
+
 ShaderDrawer::ShaderDrawer(sf::RenderWindow* new_window, int new_segments_count) {
     vp.segments_count = new_segments_count;
     window = new_window;
@@ -17,7 +87,7 @@ ShaderDrawer::ShaderDrawer(sf::RenderWindow* new_window, int new_segments_count)
     file_save_dialog.SetTypeFilters({ ".txt" });
 }
 
-void ShaderDrawer::setup(UniformParams new_up) {
+void ShaderDrawer::setup(C_UniformParams new_up) {
     sp.solved = false;
     solver.setup(new_up);
     ensure_sb();
@@ -43,15 +113,6 @@ void ShaderDrawer::forget() {
     sb.free();
 }
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VisualParams, VisualParams_FIELDS)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolverParams, SolverParams_FIELDS)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UniformParams, UniformParams_FIELDS)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Basis, Basis_FIELDS)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolutionFull, SolutionFull_FIELDS)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolutionBase, SolutionBase_FIELDS)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SolutionCorr, SolutionCorr_FIELDS)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Element, Element_FIELDS)
-
 void ShaderDrawer::load_from_file(const std::filesystem::path& file_path) {
     std::ifstream i(file_path);
     json j;
@@ -59,7 +120,7 @@ void ShaderDrawer::load_from_file(const std::filesystem::path& file_path) {
 
     vp = j["visual_params"];
     sp = j["solver_params"];
-    UniformParams up = j["problem"];
+    C_UniformParams up = j["problem"];
     json el_j = j["solution"];
 
     assert(el_j.size() == up.elements_count + 1);
@@ -67,20 +128,23 @@ void ShaderDrawer::load_from_file(const std::filesystem::path& file_path) {
     solver.setup(up);
 
     ensure_sb();
-    Element *elements = sb.get_buffer_ptr();
+
+    C_Element *c_elements = solver.elements;
 
     for (auto& element : el_j) {
-        Element el = element.template get<Element>();
-        *elements++ = el;
+        C_Element c_el = element.template get<C_Element>();
+        *c_elements++ = c_el;
     }
+
+    copy_to_shaders(0, up.elements_count);
 }
 
 void ShaderDrawer::save_to_file(const std::filesystem::path& file_path) {
-    Element *elements = sb.get_buffer_ptr();
+    C_Element *c_elements = solver.elements;
     json el_j;
     for (size_t element_i = 0; element_i <= solver.up.elements_count; ++element_i) {
-        Element el = elements[element_i];
-        el_j.push_back(el);
+        C_Element c_el = c_elements[element_i];
+        el_j.push_back(c_el);
     }
 
     json j;
@@ -162,7 +226,7 @@ void ShaderDrawer::process_gui() {
             if (ImGui::Button("Setup problem") || debug_auto_setup) {
                 debug_auto_setup = false;
 
-                UniformParams up {};
+                C_UniformParams up {};
 
                 // Problem statement
                 up.total_weight = 100 * PI * 4;
@@ -180,11 +244,11 @@ void ShaderDrawer::process_gui() {
 
         bool up_changed = false;
 
-        up_changed |= ImGui::SliderFloat("Total weight", &solver.up.total_weight, 0.1f, 10000.0f);
-        up_changed |= ImGui::SliderFloat("Total length", &solver.up.total_length, 0.1f, 30.0f);
-        up_changed |= ImGui::SliderFloat("EI", &solver.up.EI, 1.0f, 10000.0f);
-        solver.up.initial_angle = fmodf(solver.up.initial_angle, 2.0f * PI);
-        up_changed |= ImGui::SliderFloat("Theta", &solver.up.initial_angle, -PI / 2, PI / 2);
+        up_changed |= ImGui_Slider("Total weight", &solver.up.total_weight, 0.1, 10000.0);
+        up_changed |= ImGui_Slider("Total length", &solver.up.total_length, 0.1, 30.0);
+        up_changed |= ImGui_Slider("EI", &solver.up.EI, 1.0, 10000.0);
+        solver.up.initial_angle = fmod(solver.up.initial_angle, 2.0 * PI);
+        up_changed |= ImGui_Slider("Theta", &solver.up.initial_angle, -PI / 2, PI / 2);
 
         if (up_changed) {
             sp.solved = false;
@@ -204,28 +268,40 @@ void ShaderDrawer::process_gui() {
 
     // Compute
     if (should_compute && !file_load_dialog.IsOpened() && !file_save_dialog.IsOpened()) {
-        Element *elements = sb.get_buffer_ptr();
-        if (elements != nullptr) {
-            solver.traverse(elements, 0, solver.up.elements_count - 1);
-            sp.solved = true;
-
-            sp.accept_solution(&solver, elements);
-        }
+        compute(0, solver.up.elements_count);
+        copy_to_shaders(0, solver.up.elements_count);
     }
 
     ImGui::End(); // MainWindow
 }
 
-void draw_grid_n_axes(float zoom, std::array<float, 2> look_at, float line_gap = 0.1) {
+void ShaderDrawer::compute(size_t begin, size_t end) {
+    solver.traverse(begin, end);
+    sp.solved = true;
+    sp.accept_solution(&solver);
+}
+
+void ShaderDrawer::copy_to_shaders(size_t begin, size_t end) {
+    GLSL_Element *glsl_elements = sb.get_buffer_ptr();
+    if (glsl_elements != nullptr) {
+        for (size_t element_i = begin; element_i < end; ++element_i) {
+            C_Element c_element = solver.elements[element_i];
+            GLSL_Element glsl_element = C2GLSL_Element(c_element);
+            glsl_elements[element_i] = glsl_element;
+        }
+    }
+}
+
+void draw_grid_n_axes(C_float zoom, std::array<C_float, 2> look_at, C_float line_gap = 0.1) {
     // Grid
     glBegin(GL_LINES);
     glColor3f(0.1, 0.1, 0.1);
     int lines_cnt = int(1.0 / line_gap / zoom);
     for (int i = -lines_cnt - 1; i <= lines_cnt + 1; ++i) {
-        glVertex2f(-1, ((float)i * line_gap - fmodf(look_at[1], line_gap)) * zoom);
-        glVertex2f(+1, ((float)i * line_gap - fmodf(look_at[1], line_gap)) * zoom);
-        glVertex2f(((float)i * line_gap - fmodf(look_at[0], line_gap)) * zoom, -1);
-        glVertex2f(((float)i * line_gap - fmodf(look_at[0], line_gap)) * zoom, +1);
+        glVertex2d(-1, ((C_float)i * line_gap - fmod(look_at[1], line_gap)) * zoom);
+        glVertex2d(+1, ((C_float)i * line_gap - fmod(look_at[1], line_gap)) * zoom);
+        glVertex2d(((C_float)i * line_gap - fmod(look_at[0], line_gap)) * zoom, -1);
+        glVertex2d(((C_float)i * line_gap - fmod(look_at[0], line_gap)) * zoom, +1);
     }
 
     // Axes
@@ -241,7 +317,9 @@ void ShaderDrawer::draw() {
     draw_grid_n_axes(vp.zoom, vp.look_at, 0.1);
 
     if (sp.solved) {
-        sb.draw(solver.up, vp.zoom, vp.look_at, vp.dashed);
+        C_UniformParams c_up = solver.up;
+        GLSL_UniformParams glsl_up = C2GLSL_UniformParams(c_up);
+        sb.draw(glsl_up, GLSL_float(vp.zoom), { GLSL_float(vp.look_at[0]), GLSL_float(vp.look_at[1]) }, vp.dashed);
     }
     file_load_dialog.Display();
     file_save_dialog.Display();

@@ -2,35 +2,95 @@
 #define SHADERBEAMS_SOLVER_H
 
 
-#define INSIDE_C_CODE
-#include "shaders/vertex_shader.vert" // This will export type definitions, but not implement EQLINK
-#undef INSIDE_C_CODE
+#define C_float float
 
+#define C_Basis_FIELDS t, n
+struct C_Basis {
+    C_float t[2];
+    C_float n[2];
+};
 
-#include <string>
+#define C_SolutionFull_FIELDS x, y, M, T, tn, Fx, Fy
+struct C_SolutionFull {
+    C_float x, y;
+    C_float M;
+    C_float T;
+    C_Basis tn;
+    C_float Fx, Fy;
+};
 
+#define C_SolutionBase_FIELDS u, w, M, T, tn
+struct C_SolutionBase {
+    C_float u, w;
+    C_float M;
+    C_float T;
+    C_Basis tn;
+};
 
-const float PI = 3.14159265358979f;
+#define C_SolutionCorr_FIELDS u, w, M, T, N, Q, Pt, Pn
+struct C_SolutionCorr {
+    C_float u, w;
+    C_float M;
+    C_float T;
+    C_float N, Q;
+    C_float Pt, Pn;
+};
 
-class Solver {
+#define C_Element_FIELDS full, base, corr
+struct C_Element {
+    C_SolutionFull full;
+    C_SolutionBase base;
+    C_SolutionCorr corr;
+};
+
+#define C_UniformParams_FIELDS EI, initial_angle, total_weight, total_length, gap, elements_count
+struct C_UniformParams {
+    C_float EI;
+    C_float initial_angle;
+    C_float total_weight;
+    C_float total_length;
+    C_float gap;
+    int elements_count;
+};
+
+#define UP_ARRAY_SIZE 6
+
+C_SolutionFull C_EQLINK_setup_initial_border(C_UniformParams up);
+C_SolutionBase C_EQLINK_setup_base(C_UniformParams up, C_SolutionFull full0);
+C_SolutionCorr C_EQLINK_setup_corr(C_UniformParams up, C_SolutionFull full0, C_SolutionBase base0);
+C_SolutionBase C_EQLINK_link_base(C_UniformParams up, C_SolutionFull full0, C_SolutionBase base0, C_float s);
+C_SolutionCorr C_EQLINK_link_corr(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s);
+C_SolutionFull C_EQLINK_link_full([[maybe_unused]] C_UniformParams up, C_SolutionFull full0, C_SolutionBase base0, C_SolutionBase base_s, C_SolutionCorr corr_s,
+                                  [[maybe_unused]] C_float s);
+
+const C_float PI = 3.14159265358979f;
+
+class C_Solver {
 public:
-    void setup(UniformParams new_up) {
-        up = new_up;
-        _was_setup = true;
-    }
+    void setup(C_UniformParams new_up);
 
     [[nodiscard]] bool was_setup() const { return _was_setup; }
 
-    void traverse(Element* elements, size_t begin, size_t end) const;
+    void traverse(size_t begin, size_t end) const;
 
     void forget();
 
-    ~Solver() { forget(); }
+    ~C_Solver() { forget(); }
 
-    UniformParams up {};
+    C_UniformParams up {};
+
+    C_Element* elements = nullptr;
 
 private:
+    void internal_re_alloc(size_t new_elements_count);
+
+    void internal_ensure_free();
+
     bool _was_setup = false;
+
+    size_t elements_count = 0;
+    bool allocated = false;
 };
+
 
 #endif //SHADERBEAMS_SOLVER_H
