@@ -67,6 +67,7 @@ GLSL_Element C2GLSL_Element(C_Element c_element) {
 
 GLSL_UniformParams C2GLSL_UniformParams(C_UniformParams c_up) {
     return GLSL_UniformParams {
+            c_up.corr_selector,
             GLSL_float(c_up.EI),
             GLSL_float(c_up.initial_angle),
             GLSL_float(c_up.total_weight),
@@ -237,6 +238,7 @@ void ShaderDrawer::process_gui() {
 
                 // FEM parameters
                 up.elements_count = 10;
+                up.corr_selector = 0;
 
                 setup(up);
             }
@@ -256,8 +258,12 @@ void ShaderDrawer::process_gui() {
 
         ImGui::Spacing();
 
-        bool elements_count_changed = ImGui::SliderInt("Elements", &solver.up.elements_count, 1, 100);
-        if (elements_count_changed) {
+        bool fem_changed = false;
+
+        fem_changed |= ImGui::SliderInt("Elements", &solver.up.elements_count, 1, 100);
+        fem_changed |= ImGui::SliderInt("Corr solution", &solver.up.corr_selector, 0, 1);
+
+        if (fem_changed) {
             setup(solver.up);
         }
 

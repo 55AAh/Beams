@@ -143,6 +143,13 @@ C_SolutionBase C_EQLINK_link_base(C_UniformParams up, C_SolutionFull full0, C_So
 }
 
 C_SolutionCorr C_EQLINK_link_corr(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s) {
+    if (up.corr_selector == 0)
+        return C_EQLINK_link_corr_linear(up, full0, base0, corr0, s);
+    else
+        return C_EQLINK_link_corr_exponential(up, full0, base0, corr0, s);
+}
+
+C_SolutionCorr C_EQLINK_link_corr_linear(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s) {
     C_float K = C_calc_K(up, base0.M);
     C_float R = 1.0f / K;
     C_float phi = s * K;
@@ -216,6 +223,20 @@ C_SolutionCorr C_EQLINK_link_corr(C_UniformParams up, [[maybe_unused]] C_Solutio
     corr_s.Q = Q_s;
     corr_s.Pt = Pt;
     corr_s.Pn = Pn;
+
+    return corr_s;
+}
+
+C_SolutionCorr C_EQLINK_link_corr_exponential(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s) {
+    C_SolutionCorr corr_s = C_EQLINK_link_corr_linear(up, full0, base0, corr0, s);
+//    corr_s.u = 0.0;
+    corr_s.w = 1.0;
+//    corr_s.M = 0.0;
+//    corr_s.T = 0.0;
+//    corr_s.N = 0.0;
+//    corr_s.Q = 0.0;
+//    corr_s.Pt = 0.0;
+//    corr_s.Pn = 0.0;
 
     return corr_s;
 }

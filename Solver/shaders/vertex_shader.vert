@@ -39,6 +39,7 @@ struct GLSL_Element {
 };
 
 struct GLSL_UniformParams {
+    int corr_selector;
     GLSL_float EI;
     GLSL_float initial_angle;
     GLSL_float total_weight;
@@ -47,14 +48,16 @@ struct GLSL_UniformParams {
     int elements_count;
 };
 
-#define UP_ARRAY_SIZE 6
-#define GLSL_UNPACK_UP(up, arr) GLSL_UniformParams up = GLSL_UniformParams(arr[0], arr[1], arr[2], arr[3], arr[4], int(arr[5]));
+#define UP_ARRAY_SIZE 7
+#define GLSL_UNPACK_UP(up, arr) GLSL_UniformParams up = GLSL_UniformParams(int(arr[0]), arr[1], arr[2], arr[3], arr[4], arr[5], int(arr[6]));
 
 GLSL_SolutionFull GLSL_EQLINK_setup_initial_border(GLSL_UniformParams up);
 GLSL_SolutionBase GLSL_EQLINK_setup_base(GLSL_UniformParams up, GLSL_SolutionFull full0);
 GLSL_SolutionCorr GLSL_EQLINK_setup_corr(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0);
 GLSL_SolutionBase GLSL_EQLINK_link_base(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_float s);
 GLSL_SolutionCorr GLSL_EQLINK_link_corr(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s);
+GLSL_SolutionCorr GLSL_EQLINK_link_corr_linear(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s);
+GLSL_SolutionCorr GLSL_EQLINK_link_corr_exponential(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s);
 GLSL_SolutionFull GLSL_EQLINK_link_full(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionBase base_s, GLSL_SolutionCorr corr_s, GLSL_float s);
 
 const GLSL_float PI = 3.14159265358979f;
@@ -199,6 +202,13 @@ GLSL_SolutionBase GLSL_EQLINK_link_base(GLSL_UniformParams up, GLSL_SolutionFull
 }
 
 GLSL_SolutionCorr GLSL_EQLINK_link_corr(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s) {
+    if (up.corr_selector == 0)
+        return GLSL_EQLINK_link_corr_linear(up, full0, base0, corr0, s);
+    else
+        return GLSL_EQLINK_link_corr_exponential(up, full0, base0, corr0, s);
+}
+
+GLSL_SolutionCorr GLSL_EQLINK_link_corr_linear(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s) {
     GLSL_float K = GLSL_calc_K(up, base0.M);
     GLSL_float R = 1.0f / K;
     GLSL_float phi = s * K;
@@ -272,6 +282,20 @@ GLSL_SolutionCorr GLSL_EQLINK_link_corr(GLSL_UniformParams up, GLSL_SolutionFull
     corr_s.Q = Q_s;
     corr_s.Pt = Pt;
     corr_s.Pn = Pn;
+
+    return corr_s;
+}
+
+GLSL_SolutionCorr GLSL_EQLINK_link_corr_exponential(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s) {
+    GLSL_SolutionCorr corr_s = GLSL_EQLINK_link_corr_linear(up, full0, base0, corr0, s);
+//    corr_s.u = 0.0;
+    corr_s.w = 1.0;
+//    corr_s.M = 0.0;
+//    corr_s.T = 0.0;
+//    corr_s.N = 0.0;
+//    corr_s.Q = 0.0;
+//    corr_s.Pt = 0.0;
+//    corr_s.Pn = 0.0;
 
     return corr_s;
 }

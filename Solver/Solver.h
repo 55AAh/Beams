@@ -50,8 +50,9 @@ struct C_Element {
     C_SolutionCorr corr;
 };
 
-#define C_UniformParams_FIELDS EI, initial_angle, total_weight, total_length, gap, elements_count
+#define C_UniformParams_FIELDS corr_selector, EI, initial_angle, total_weight, total_length, gap, elements_count
 struct C_UniformParams {
+    int corr_selector;
     C_float EI;
     C_float initial_angle;
     C_float total_weight;
@@ -60,13 +61,15 @@ struct C_UniformParams {
     int elements_count;
 };
 
-#define UP_ARRAY_SIZE 6
+#define UP_ARRAY_SIZE 7
 
 C_SolutionFull C_EQLINK_setup_initial_border(C_UniformParams up);
 C_SolutionBase C_EQLINK_setup_base(C_UniformParams up, C_SolutionFull full0);
 C_SolutionCorr C_EQLINK_setup_corr(C_UniformParams up, C_SolutionFull full0, C_SolutionBase base0);
 C_SolutionBase C_EQLINK_link_base(C_UniformParams up, C_SolutionFull full0, C_SolutionBase base0, C_float s);
 C_SolutionCorr C_EQLINK_link_corr(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s);
+C_SolutionCorr C_EQLINK_link_corr_linear(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s);
+C_SolutionCorr C_EQLINK_link_corr_exponential(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s);
 C_SolutionFull C_EQLINK_link_full([[maybe_unused]] C_UniformParams up, C_SolutionFull full0, C_SolutionBase base0, C_SolutionBase base_s, C_SolutionCorr corr_s,
                                   [[maybe_unused]] C_float s);
 

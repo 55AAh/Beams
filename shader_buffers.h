@@ -44,6 +44,7 @@ struct GLSL_Element {
 };
 
 struct GLSL_UniformParams {
+    int corr_selector;
     GLSL_float EI;
     GLSL_float initial_angle;
     GLSL_float total_weight;
@@ -52,8 +53,8 @@ struct GLSL_UniformParams {
     int elements_count;
 };
 
-#define UP_ARRAY_SIZE 6
-#define GLSL_PACK_UP(arr, up) GLSL_float arr[UP_ARRAY_SIZE] { up.EI, up.initial_angle, up.total_weight, up.total_length, up.gap, (GLSL_float)up.elements_count }
+#define UP_ARRAY_SIZE 7
+#define GLSL_PACK_UP(arr, up) GLSL_float arr[UP_ARRAY_SIZE] { up.corr_selector, up.EI, up.initial_angle, up.total_weight, up.total_length, up.gap, (GLSL_float)up.elements_count }
 
 
 struct VBO_vertex {
