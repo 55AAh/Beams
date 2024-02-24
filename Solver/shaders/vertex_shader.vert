@@ -210,7 +210,7 @@ GLSL_SolutionCorr GLSL_EQLINK_link_corr(GLSL_UniformParams up, GLSL_SolutionFull
 
 GLSL_SolutionCorr GLSL_EQLINK_link_corr_linear(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s) {
     GLSL_float K = GLSL_calc_K(up, base0.M);
-    GLSL_float R = 1.0f / K;
+    GLSL_float R = 1.0 / K;
     GLSL_float phi = s * K;
     GLSL_float sin_phi = sin(phi), cos_phi = cos(phi);
 
@@ -219,12 +219,12 @@ GLSL_SolutionCorr GLSL_EQLINK_link_corr_linear(GLSL_UniformParams up, GLSL_Solut
     GLSL_float M0 = corr0.M;
     GLSL_float N0 = corr0.N, Q0 = corr0.Q;
     GLSL_float Pt = corr0.Pt, Pn = corr0.Pn;
-    GLSL_float f = 0.0f;
+    GLSL_float f = 0.0;
     GLSL_float EJ = up.EI;
 
     GLSL_float fact[7] = { 1, 1, 2, 6, 24, 120, 720 };
-    GLSL_float pow_phi[6] = { 1.0f, phi, pow(phi, 2.0f), pow(phi, 3.0f), pow(phi, 4.0f), pow(phi, 5.0f) };
-    GLSL_float pow_s[5] = { 1.0f, s, pow(s, 2.0f), pow(s, 3.0f), pow(s, 4.0f) };
+    GLSL_float pow_phi[6] = { 1.0, phi, pow(phi, 2.0), pow(phi, 3.0), pow(phi, 4.0), pow(phi, 5.0) };
+    GLSL_float pow_s[5] = { 1.0, s, pow(s, 2.0), pow(s, 3.0), pow(s, 4.0) };
 
     GLSL_float u_s = 0.0;
     u_s += u0 * cos_phi;
@@ -287,15 +287,84 @@ GLSL_SolutionCorr GLSL_EQLINK_link_corr_linear(GLSL_UniformParams up, GLSL_Solut
 }
 
 GLSL_SolutionCorr GLSL_EQLINK_link_corr_exponential(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s) {
-    GLSL_SolutionCorr corr_s = GLSL_EQLINK_link_corr_linear(up, full0, base0, corr0, s);
-//    corr_s.u = 0.0;
-    corr_s.w = 1.0;
-//    corr_s.M = 0.0;
-//    corr_s.T = 0.0;
-//    corr_s.N = 0.0;
-//    corr_s.Q = 0.0;
-//    corr_s.Pt = 0.0;
-//    corr_s.Pn = 0.0;
+    GLSL_float K = GLSL_calc_K(up, base0.M);
+    GLSL_float R = 1.0 / K;
+    GLSL_float phi = s * K;
+    GLSL_float sin_phi = sin(phi), cos_phi = cos(phi);
+
+    GLSL_float u0 = corr0.u, w0 = corr0.w;
+    GLSL_float T0 = corr0.T;
+    GLSL_float M0 = corr0.M;
+    GLSL_float N0 = corr0.N, Q0 = corr0.Q;
+    GLSL_float Pt = corr0.Pt, Pn = corr0.Pn;
+    GLSL_float f = 0.0;
+    GLSL_float mu = 1.0;
+    GLSL_float sh_mu_phi = sinh(mu*phi), ch_mu_phi = cosh(mu*phi);
+    GLSL_float mu_sp1 = pow(mu, 2) + 1;
+    GLSL_float EJ = up.EI;
+
+    GLSL_float pow_phi[6] = { 1.0, phi, pow(phi, 2.0), pow(phi, 3.0), pow(phi, 4.0), pow(phi, 5.0) };
+    GLSL_float pow_R[4] = { 1.0, R, pow(R, 2.0), pow(R, 3.0) };
+    GLSL_float pow_mu[5] = { 1.0, mu, pow(mu, 2.0), pow(mu, 3.0), pow(mu, 4.0) };
+
+    GLSL_float u_s = 0.0;
+    u_s += u0 * cos_phi;
+    u_s += w0 * sin_phi;
+    u_s += T0 * R * (1 - cos_phi);
+    u_s += Q0 * (pow_R[3]/(EJ*pow_mu[2])*((ch_mu_phi-cos_phi)/mu_sp1-(1-cos_phi))-f*R*((ch_mu_phi-cos_phi)/mu_sp1));
+    u_s += N0 * -(pow_R[3]/(EJ*pow_mu[3])*((sh_mu_phi-mu*sin_phi)/mu_sp1-mu*(phi-sin_phi))+f*R/pow_mu[2]*((pow_mu[4]+2*pow_mu[2])*sin_phi/mu_sp1-mu*sh_mu_phi/mu_sp1));
+    u_s += M0 * (pow_R[2]/EJ*(sh_mu_phi/pow_mu[3]-phi/pow_mu[2])-f*(1/mu)*(sh_mu_phi-mu*sin_phi));
+    u_s += Pn * R*(pow_R[3]/(EJ*pow_mu[3])*((sh_mu_phi-mu*sin_phi)/mu_sp1-mu*(phi-sin_phi))-f*R/mu*(sh_mu_phi/mu_sp1-mu*sin_phi/mu_sp1));
+    u_s += Pt * R*(pow_R[3]/(EJ*pow_mu[4])*(ch_mu_phi/mu_sp1-cos_phi*pow_mu[4]/mu_sp1-pow_mu[2]*pow_phi[2]/2+pow_mu[2]-1)-f*R/pow_mu[2]*((cos_phi-ch_mu_phi)/mu_sp1+mu_sp1*(1-cos_phi)));
+
+    GLSL_float w_s = 0.0;
+    w_s += u0 * -sin_phi;
+    w_s += w0 * cos_phi;
+    w_s += T0 * R * sin_phi;
+    w_s += Q0 * (pow_R[3]/(EJ*pow_mu[2])*(mu*sh_mu_phi/mu_sp1-sin_phi*pow_mu[2]/mu_sp1)+f*R/mu*((sh_mu_phi-mu*sin_phi)/mu_sp1));
+    w_s += N0 * (pow_R[3]/(EJ*pow_mu[2])*((ch_mu_phi-cos_phi)/mu_sp1-(1-cos_phi))-f*R/pow_mu[2]*((1-cos_phi)*mu_sp1-(ch_mu_phi-cos_phi)/mu_sp1));
+    w_s += M0 * (pow_R[2]/EJ*(ch_mu_phi-1)/pow_mu[2]+f*mu_sp1/pow_mu[2]*((ch_mu_phi-cos_phi)/mu_sp1-(1-cos_phi)));
+    w_s += Pn * R*(pow_R[3]/(EJ*pow_mu[2])*((ch_mu_phi-cos_phi)/mu_sp1-(1-cos_phi))+f*R/pow_mu[2]*((ch_mu_phi-cos_phi)/mu_sp1-(1-cos_phi)));
+    w_s += Pt * R*(pow_R[3]/(EJ*pow_mu[4])*(mu*sh_mu_phi/mu_sp1+pow_mu[4]*sin_phi/mu_sp1-pow_mu[2]*phi)-f*R/pow_mu[3]*(mu_sp1*mu*(phi-sin_phi)-(sh_mu_phi-mu*sin_phi)/mu_sp1));
+
+    GLSL_float T_s = 0.0;
+    T_s += T0;
+    T_s += Q0 * pow_R[2]/(EJ*pow_mu[2])*(ch_mu_phi-1);
+    T_s += N0 * -pow_R[2]/(EJ*pow_mu[3])*(sh_mu_phi-mu*phi);
+    T_s += M0 * R/EJ*(phi+mu_sp1/pow_mu[3]*(sh_mu_phi-mu*phi));
+    T_s += Pn * pow_R[3]/(EJ*pow_mu[3])*(sh_mu_phi-mu*phi);
+    T_s += Pt * -pow_R[3]/(EJ*pow_mu[4])*(ch_mu_phi-pow_mu[2]*pow_phi[2]/2-1);
+
+    GLSL_float Q_s = 0.0;
+    Q_s += Q0 * ch_mu_phi;
+    Q_s += N0 * -1/mu*sh_mu_phi;
+    Q_s += M0 * mu_sp1/(R*mu)*sh_mu_phi;
+    Q_s += Pn * R * sh_mu_phi/mu;
+    Q_s += Pt * R/pow_mu[2]*(-ch_mu_phi+1);
+
+    GLSL_float N_s = 0.0;
+    N_s += Q0 * sh_mu_phi/mu;
+    N_s += N0 * (1-(ch_mu_phi-1)/pow_mu[2]);
+    N_s += M0 * mu_sp1/(pow_mu[2]*R)*(ch_mu_phi-1);
+    N_s += Pn * R*(ch_mu_phi-1)/pow_mu[2];
+    N_s += Pt * -R*(sh_mu_phi/pow_mu[3]-mu_sp1/pow_mu[2]*phi);
+
+    GLSL_float M_s = 0.0;
+    M_s += Q0 * R/mu*sh_mu_phi;
+    M_s += N0 * R/pow_mu[2]*(-ch_mu_phi+1);
+    M_s += M0 * (ch_mu_phi+1/pow_mu[2]*(ch_mu_phi-1));
+    M_s += Pn * R*R/pow_mu[2]*(ch_mu_phi-1);
+    M_s += Pt * R*(-R/pow_mu[3]*sh_mu_phi+R*phi/pow_mu[2]);
+
+    GLSL_SolutionCorr corr_s;
+    corr_s.u = u_s;
+    corr_s.w = w_s;
+    corr_s.M = M_s;
+    corr_s.T = T_s;
+    corr_s.N = N_s;
+    corr_s.Q = Q_s;
+    corr_s.Pt = Pt;
+    corr_s.Pn = Pn;
 
     return corr_s;
 }
