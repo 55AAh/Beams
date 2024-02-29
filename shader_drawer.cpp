@@ -178,9 +178,12 @@ void ShaderDrawer::process_gui() {
             if (ImGui::MenuItem("Save to file")) {
                 file_save_dialog.Open();
             }
+            if (ImGui::MenuItem("Exit")) {
+                running = false;
+            }
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Menu"))
+        if (ImGui::BeginMenu("Help"))
         {
             if (ImGui::MenuItem("Show demo window")) {
                 show_demo_window = true;

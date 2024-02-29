@@ -28,8 +28,7 @@ int main() {
     ShaderDrawer sd(&window);
 
     sf::Clock deltaClock;
-    bool running = true;
-    while (running) {
+    while (sd.running) {
 
         // Check all the window's events that were triggered since the last iteration of the loop
         sf::Event event{};
@@ -40,7 +39,7 @@ int main() {
 
             // "Close requested" event: we close the window
             if (event.type == sf::Event::Closed)
-                running = false;
+                sd.running = false;
             // Window was resized
             else if (event.type == sf::Event::Resized)
                 glViewport(0, 0, (GLsizei) event.size.width, (GLsizei) event.size.height);

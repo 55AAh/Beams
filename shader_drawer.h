@@ -125,6 +125,8 @@ struct SolverParams {
 
 class ShaderDrawer {
 public:
+    bool running = true;
+
     explicit ShaderDrawer(sf::RenderWindow* window, int new_segments_count = 10);
 
     void setup(C_UniformParams new_up);
