@@ -5,16 +5,16 @@
 
 C_SolutionFull C_EQLINK_setup_initial_border(C_UniformParams up) {
     // Beam's left end is hinged at a known angle
-    C_float x = 0.0f, y = 0.0f;
-    C_float M = 0.0f;
+    C_float x = 0.0, y = 0.0;
+    C_float M = 0.0;
     C_float T = up.initial_angle;
     C_Basis tn{};
     tn.t[0] = cos(T); tn.t[1] = sin(T);
     tn.n[0] = -sin(T); tn.n[1] = cos(T);
 
     // Support reaction force is upward
-    C_float each_stand_load = up.total_weight / 2.0f;
-    C_float Fx = 0.0f;
+    C_float each_stand_load = up.total_weight / 2.0;
+    C_float Fx = 0.0;
     C_float Fy = each_stand_load;
 
     C_SolutionFull border{};
@@ -38,7 +38,7 @@ C_SolutionBase C_EQLINK_setup_base(C_UniformParams up, C_SolutionFull full0) {
     // Force induces a moment in the middle of the element
     // Since we don't know the curvature yet, we treat the element as straight
     C_float each_el_length = up.total_length / C_float(up.elements_count);
-    C_float middle_s = each_el_length / 2.0f;
+    C_float middle_s = each_el_length / 2.0;
     C_float F_arm_x = full0.tn.t[0] * middle_s, F_arm_y = full0.tn.t[1] * middle_s;
     // Moment is <0 when beam goes to the right (because F then induces a counter-clockwise rotation)
     C_float M = F_arm_x * full0.Fy - F_arm_y * full0.Fx;
@@ -64,7 +64,7 @@ C_SolutionCorr C_EQLINK_setup_corr(C_UniformParams up, C_SolutionFull full0, C_S
 
     // Upward force is expressed in basis (at the middle)
     C_float each_el_length = up.total_length / C_float(up.elements_count);
-    C_SolutionBase base_mid = C_EQLINK_link_base(up, full0, base0, each_el_length / 2.0f);
+    C_SolutionBase base_mid = C_EQLINK_link_base(up, full0, base0, each_el_length / 2.0);
     C_float N = full0.Fy * base_mid.tn.t[1];
     C_float Q = full0.Fy * base_mid.tn.n[1];
 
@@ -119,8 +119,8 @@ C_SolutionBase C_EQLINK_link_base(C_UniformParams up, C_SolutionFull full0, C_So
 
     // Coordinates are shifted
     C_float shift_mat_s[2];
-    shift_mat_s[0] = 1.0f / K * sin(phi);
-    shift_mat_s[1] = 1.0f / K * (1.0f - cos(phi));
+    shift_mat_s[0] = 1.0 / K * sin(phi);
+    shift_mat_s[1] = 1.0 / K * (1.0 - cos(phi));
 
     C_float du = shift_mat_s[0] * full0.tn.t[0] + shift_mat_s[1] * full0.tn.n[0];
     C_float dw = shift_mat_s[0] * full0.tn.t[1] + shift_mat_s[1] * full0.tn.n[1];
@@ -151,7 +151,7 @@ C_SolutionCorr C_EQLINK_link_corr(C_UniformParams up, [[maybe_unused]] C_Solutio
 
 C_SolutionCorr C_EQLINK_link_corr_linear(C_UniformParams up, [[maybe_unused]] C_SolutionFull full0, C_SolutionBase base0, C_SolutionCorr corr0, C_float s) {
     C_float K = C_calc_K(up, base0.M);
-    C_float R = 1.0f / K;
+    C_float R = 1.0 / K;
     C_float phi = s * K;
     C_float sin_phi = sin(phi), cos_phi = cos(phi);
 
@@ -160,12 +160,12 @@ C_SolutionCorr C_EQLINK_link_corr_linear(C_UniformParams up, [[maybe_unused]] C_
     C_float M0 = corr0.M;
     C_float N0 = corr0.N, Q0 = corr0.Q;
     C_float Pt = corr0.Pt, Pn = corr0.Pn;
-    C_float f = 0.0f;
+    C_float f = 0.0;
     C_float EJ = up.EI;
 
     C_float fact[7] = { 1, 1, 2, 6, 24, 120, 720 };
-    C_float pow_phi[6] = { 1.0f, phi, pow(phi, 2.0f), pow(phi, 3.0f), pow(phi, 4.0f), pow(phi, 5.0f) };
-    C_float pow_s[5] = { 1.0f, s, pow(s, 2.0f), pow(s, 3.0f), pow(s, 4.0f) };
+    C_float pow_phi[6] = { 1.0, phi, pow(phi, 2.0), pow(phi, 3.0), pow(phi, 4.0), pow(phi, 5.0) };
+    C_float pow_s[5] = { 1.0, s, pow(s, 2.0), pow(s, 3.0), pow(s, 4.0) };
 
     C_float u_s = 0.0;
     u_s += u0 * cos_phi;
@@ -355,7 +355,7 @@ void C_Solver::setup(C_UniformParams new_up) {
 }
 
 void C_Solver::traverse(size_t begin, size_t end) const {
-    C_float each_length = up.total_length / (float)up.elements_count;
+    C_float each_length = up.total_length / (C_float)up.elements_count;
 
     if (begin == 0) {
         C_SolutionFull border = C_EQLINK_setup_initial_border(up);
@@ -366,16 +366,26 @@ void C_Solver::traverse(size_t begin, size_t end) const {
         C_SolutionFull full0 = elements[element_i].full;
         C_SolutionBase base0 = C_EQLINK_setup_base(up, full0);
         C_SolutionCorr corr0 = C_EQLINK_setup_corr(up, full0, base0);
-        C_Element el0 {full0, base0, corr0 };
+        elements[element_i].base = base0;
+        elements[element_i].corr = corr0;
 
-        elements[element_i] = el0;
-
-        C_SolutionBase base1 = C_EQLINK_link_base(up, full0, base0, each_length);
-        C_SolutionCorr corr1 = C_EQLINK_link_corr(up, full0, base0, corr0, each_length);
-        C_SolutionFull full1 = C_EQLINK_link_full(up, full0, base0,base1, corr1, each_length);
+        C_Element el1 = get_solution_at(element_i, each_length);
+        C_SolutionFull full1 = el1.full;
 
         elements[element_i + 1] = border_element(full1);
     }
+}
+
+C_Element C_Solver::get_solution_at(size_t element_i, C_float s) const {
+    C_Element el0 = elements[element_i];
+
+    C_SolutionBase base_s = C_EQLINK_link_base(up, el0.full, el0.base, s);
+    C_SolutionCorr corr_s = C_EQLINK_link_corr(up, el0.full, el0.base, el0.corr, s);
+    C_SolutionFull full_s = C_EQLINK_link_full(up, el0.full, el0.base, base_s, corr_s, s);
+
+    C_Element el_s { full_s, base_s, corr_s };
+
+    return el_s;
 }
 
 void C_Solver::forget() {

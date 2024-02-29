@@ -3,3 +3,6 @@
 
 #CMake build folders
 cmake-build-*
+
+#Python environment
+venv

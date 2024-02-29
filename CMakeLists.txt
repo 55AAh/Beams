@@ -84,3 +84,25 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
+
+# Shader files (copying to working directory)
+add_custom_command(
+        OUTPUT copy_GLSL_shaders
+        COMMAND cmake -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/Solver/shaders ${CMAKE_BINARY_DIR}/bin/shaders
+)
+add_custom_target(
+        copy_GLSL_shaders_target
+        DEPENDS copy_GLSL_shaders
+)
+add_dependencies(${PROJECT_NAME} copy_GLSL_shaders_target)
+
+# Python files
+add_custom_command(
+        OUTPUT copy_Python_tools
+        COMMAND cmake -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/python-tools ${CMAKE_BINARY_DIR}/bin/python-tools
+)
+add_custom_target(
+        copy_Python_tools_target
+        DEPENDS copy_Python_tools
+)
+add_dependencies(${PROJECT_NAME} copy_Python_tools_target)

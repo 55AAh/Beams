@@ -10,14 +10,3 @@ endif ()
 add_library(${PROJECT_NAME} SHARED
     Solver.cpp
 )
-
-# Shader files (copying to working directory)
-add_custom_command(
-        OUTPUT copy_GLSL_shaders
-        COMMAND cmake -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/shaders ${CMAKE_BINARY_DIR}/bin/shaders
-)
-add_custom_target(
-        copy_GLSL_shaders_target
-        DEPENDS copy_GLSL_shaders
-)
-add_dependencies(${PROJECT_NAME} copy_GLSL_shaders_target)

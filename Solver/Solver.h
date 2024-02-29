@@ -83,6 +83,8 @@ public:
 
     void traverse(size_t begin, size_t end) const;
 
+    C_Element get_solution_at(size_t element_i, C_float s) const;
+
     void forget();
 
     ~C_Solver() { forget(); }

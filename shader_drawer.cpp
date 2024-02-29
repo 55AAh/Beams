@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <cstdlib>
 
 using json = nlohmann::json;
 
@@ -145,18 +146,37 @@ void ShaderDrawer::load_from_file(const std::filesystem::path& file_path) {
 }
 
 void ShaderDrawer::save_to_file(const std::filesystem::path& file_path) {
-    C_Element *c_elements = solver.elements;
-    json el_j;
-    for (size_t element_i = 0; element_i <= solver.up.elements_count; ++element_i) {
-        C_Element c_el = c_elements[element_i];
-        el_j.push_back(c_el);
-    }
-
     json j;
     j["visual_params"] = vp;
     j["solver_params"] = sp;
     j["problem"] = solver.up;
-    j["solution"] = el_j;
+
+    auto j_elements = nlohmann::json::array();
+    C_Element *c_elements = solver.elements;
+    for (size_t element_i = 0; element_i <= solver.up.elements_count; ++element_i) {
+        C_Element c_el = c_elements[element_i];
+        j_elements.push_back(c_el);
+    }
+    j["solution"] = j_elements;
+
+    if (matplotlib) {
+        auto j_elements_seg_outer = nlohmann::json::array();
+        C_float each_length = solver.up.total_length / (C_float)solver.up.elements_count;
+
+        for (size_t element_i = 0; element_i <= solver.up.elements_count; ++element_i) {
+            auto j_elements_seg_inner = nlohmann::json::array();
+
+            for (size_t segment_i = 0; segment_i <= vp.segments_count; ++segment_i) {
+                C_float s = each_length * (C_float)segment_i / vp.segments_count;
+                C_Element c_seg_full = solver.get_solution_at(element_i, s);
+
+                j_elements_seg_inner.push_back(c_seg_full);
+            }
+
+            j_elements_seg_outer.push_back(j_elements_seg_inner);
+        }
+        j["solution_seg"] = j_elements_seg_outer;
+    }
 
     std::ofstream o(file_path);
     o << std::setw(4) << j << std::endl;
@@ -164,6 +184,12 @@ void ShaderDrawer::save_to_file(const std::filesystem::path& file_path) {
 
 void ShaderDrawer::process_event(sf::Event event) {
     vp.process_event(event, window);
+}
+
+void open_in_matplotlib(const std::filesystem::path& file_path) {
+    std::string command = "python-tools\\run_nowait python-tools\\plot.py ";
+    command += file_path.string();
+    system(command.c_str());
 }
 
 void ShaderDrawer::process_gui() {
@@ -176,10 +202,24 @@ void ShaderDrawer::process_gui() {
                 file_load_dialog.Open();
             }
             if (ImGui::MenuItem("Save to file")) {
+                matplotlib = false;
                 file_save_dialog.Open();
             }
             if (ImGui::MenuItem("Exit")) {
                 running = false;
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Matplotlib")) {
+            if (ImGui::MenuItem("Export")) {
+                matplotlib = true;
+                std::filesystem::path file_path = "matplotlib.txt";
+                save_to_file(file_path);
+                open_in_matplotlib(file_path);
+            }
+            if (ImGui::MenuItem("Export as")) {
+                matplotlib = true;
+                file_save_dialog.Open();
             }
             ImGui::EndMenu();
         }
@@ -205,6 +245,11 @@ void ShaderDrawer::process_gui() {
             file_path.replace_extension("txt");
         save_to_file(file_path);
         file_save_dialog.ClearSelected();
+
+        if (matplotlib) {
+            open_in_matplotlib(file_path);
+            matplotlib = false;
+        }
     }
 
     if (show_demo_window) {

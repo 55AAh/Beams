@@ -60,7 +60,7 @@ GLSL_SolutionCorr GLSL_EQLINK_link_corr_linear(GLSL_UniformParams up, GLSL_Solut
 GLSL_SolutionCorr GLSL_EQLINK_link_corr_exponential(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionCorr corr0, GLSL_float s);
 GLSL_SolutionFull GLSL_EQLINK_link_full(GLSL_UniformParams up, GLSL_SolutionFull full0, GLSL_SolutionBase base0, GLSL_SolutionBase base_s, GLSL_SolutionCorr corr_s, GLSL_float s);
 
-const GLSL_float PI = 3.14159265358979f;
+const GLSL_float PI = 3.14159265358979;
 
 GLSL_SolutionFull GLSL_EQLINK_setup_initial_border(GLSL_UniformParams up) {
     // Beam's left end is hinged at a known angle
@@ -97,7 +97,7 @@ GLSL_SolutionBase GLSL_EQLINK_setup_base(GLSL_UniformParams up, GLSL_SolutionFul
     // Force induces a moment in the middle of the element
     // Since we don't know the curvature yet, we treat the element as straight
     GLSL_float each_el_length = up.total_length / GLSL_float(up.elements_count);
-    GLSL_float middle_s = each_el_length / 2.0f;
+    GLSL_float middle_s = each_el_length / 2.0;
     GLSL_float F_arm_x = full0.tn.t[0] * middle_s, F_arm_y = full0.tn.t[1] * middle_s;
     // Moment is <0 when beam goes to the right (because F then induces a counter-clockwise rotation)
     GLSL_float M = F_arm_x * full0.Fy - F_arm_y * full0.Fx;
@@ -123,7 +123,7 @@ GLSL_SolutionCorr GLSL_EQLINK_setup_corr(GLSL_UniformParams up, GLSL_SolutionFul
 
     // Upward force is expressed in basis (at the middle)
     GLSL_float each_el_length = up.total_length / GLSL_float(up.elements_count);
-    GLSL_SolutionBase base_mid = GLSL_EQLINK_link_base(up, full0, base0, each_el_length / 2.0f);
+    GLSL_SolutionBase base_mid = GLSL_EQLINK_link_base(up, full0, base0, each_el_length / 2.0);
     GLSL_float N = full0.Fy * base_mid.tn.t[1];
     GLSL_float Q = full0.Fy * base_mid.tn.n[1];
 
@@ -178,8 +178,8 @@ GLSL_SolutionBase GLSL_EQLINK_link_base(GLSL_UniformParams up, GLSL_SolutionFull
 
     // Coordinates are shifted
     GLSL_float shift_mat_s[2];
-    shift_mat_s[0] = 1.0f / K * sin(phi);
-    shift_mat_s[1] = 1.0f / K * (1.0f - cos(phi));
+    shift_mat_s[0] = 1.0 / K * sin(phi);
+    shift_mat_s[1] = 1.0 / K * (1.0 - cos(phi));
 
     GLSL_float du = shift_mat_s[0] * full0.tn.t[0] + shift_mat_s[1] * full0.tn.n[0];
     GLSL_float dw = shift_mat_s[0] * full0.tn.t[1] + shift_mat_s[1] * full0.tn.n[1];

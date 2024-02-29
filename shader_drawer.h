@@ -166,6 +166,7 @@ private:
     SolverParams sp;
 
     ImGui::FileBrowser file_load_dialog, file_save_dialog;
+    bool matplotlib = false;
 };
 
 
