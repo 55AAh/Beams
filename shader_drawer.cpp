@@ -100,18 +100,22 @@ void ShaderDrawer::tweak(int new_segments_count) {
 }
 
 void ShaderDrawer::ensure_sb() {
-    if (solver.was_setup()) {
+    if (solver.was_setup() && !vp.disabled) {
         sb.re_alloc(solver.up.elements_count, vp.segments_count);
     }
     else {
-        sb.free();
+        free_sb();
     }
+}
+
+void ShaderDrawer::free_sb() {
+    sb.free();
 }
 
 void ShaderDrawer::forget() {
     sp.solved = false;
     solver.forget();
-    sb.free();
+    free_sb();
 }
 
 void ShaderDrawer::load_from_file(const std::filesystem::path& file_path) {
@@ -207,12 +211,19 @@ void ShaderDrawer::process_gui() {
     ImGui::Begin("Beams");
 
     if (ImGui::CollapsingHeader("Visual")) {
-        bool segments_count_changed = ImGui::SliderInt("Segments", &vp.segments_count, 1, 10);
-        if (segments_count_changed) {
+        bool sb_changed = false;
+
+        sb_changed |= ImGui::Checkbox("Disabled", &vp.disabled);
+
+        if (!vp.disabled) {
+            sb_changed |= ImGui::SliderInt("Segments", &vp.segments_count, 1, 10);
+            ImGui::Checkbox("Dashed lines", &vp.dashed);
+        }
+
+        if (sb_changed) {
             tweak(vp.segments_count);
         }
 
-        ImGui::Checkbox("Dashed lines", &vp.dashed);
     }
 
     bool should_compute = false;

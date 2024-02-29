@@ -20,8 +20,9 @@ inline bool ImGui_Slider(const char* label, C_float* v, C_float v_min, C_float v
     return ImGui::SliderScalar(label, C_ImGuiDataType, v, &v_min, &v_max, format, flags);
 }
 
-#define VisualParams_FIELDS segments_count, dashed, zoom, look_at, mouse_pressed, mouse_initial, look_at_initial
+#define VisualParams_FIELDS disabled, segments_count, dashed, zoom, look_at, mouse_pressed, mouse_initial, look_at_initial
 struct VisualParams {
+    bool disabled = false;
     int segments_count = 0;
     bool dashed = false;
     C_float zoom = 0.1f;
@@ -146,6 +147,8 @@ public:
 
 private:
     void ensure_sb();
+
+    void free_sb();
 
     void compute(size_t begin, size_t end);
 
