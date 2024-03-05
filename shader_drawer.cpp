@@ -154,6 +154,9 @@ void SolverParams::accept_solution(C_Solver *solver) {
         C_float angle_factor = (PI / 2.0) * deviation_factor;
         C_float angle_delta = angle_factor * fit_rate;
         solver->up.initial_angle -= angle_delta;
+        if (isinf(solver->up.initial_angle) || isnan(solver->up.initial_angle)) {
+            solver->up.initial_angle = 2.0 * PI;
+        }
     }
 }
 
