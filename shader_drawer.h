@@ -31,35 +31,7 @@ struct VisualParams {
     std::array<int, 2> mouse_initial = {0, 0};
     std::array<C_float, 2> look_at_initial = {0.0, 0.0};
 
-    void process_event(sf::Event event, sf::RenderWindow* window) {
-        if (ImGui::GetIO().WantCaptureMouse) {
-            return;
-        }
-
-        if (event.type == sf::Event::MouseWheelMoved) {
-            zoom *= pow(2.0, (C_float)event.mouseWheel.delta / 10.0);
-            zoom = fmin(fmax(zoom, pow(2, -10)), pow(2, 10));
-        }
-        else if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Button::Left) {
-                mouse_pressed = true;
-                mouse_initial = { event.mouseButton.x, event.mouseButton.y };
-                look_at_initial = look_at;
-            }
-        }
-        else if (event.type == sf::Event::MouseButtonReleased) {
-            if (event.mouseButton.button == sf::Mouse::Button::Left) {
-                mouse_pressed = false;
-            }
-        }
-        else if (event.type == sf::Event::MouseMoved) {
-            if (mouse_pressed) {
-                sf::Vector2u window_size = window->getSize();
-                look_at[0] = look_at_initial[0] - C_float(event.mouseMove.x - mouse_initial[0]) / C_float(window_size.x) * 2.0 / zoom;
-                look_at[1] = look_at_initial[1] + C_float(event.mouseMove.y - mouse_initial[1]) / C_float(window_size.y) * 2.0 / zoom;
-            }
-        }
-    }
+    void process_event(sf::Event event, sf::RenderWindow* window);
 };
 
 
@@ -72,54 +44,9 @@ struct SolverParams {
     C_float fit_rate = 0.1;
     C_float fit_deviation = 0.0;
 
-    bool should_compute(C_Solver* solver) {
-        bool force_solve = false;
-        bool was_fit = fabs(fit_deviation) < fit_threshold;
+    bool should_compute(C_Solver* solver);
 
-        if (ImGui::CollapsingHeader("Solver")) {
-            ImGui::Checkbox("Auto-solve", &auto_solve);
-            force_solve = ImGui::Button("Solve");
-
-            ImGui::Spacing();
-
-            if (ImGui::Checkbox("AutoFit angle", &auto_fit_angle)) {
-                was_fit = false;
-            }
-            ImGui_Slider("Fit threshold", &fit_threshold, solver->up.total_length * 1e-5, solver->up.total_length / 10.0, "%.3g", ImGuiSliderFlags_Logarithmic);
-            ImGui_Slider("Fit rate", &fit_rate, 0.01, 1.0, "%.3g", ImGuiSliderFlags_Logarithmic);
-            if (auto_fit_angle) {
-                ImGui::Text("Fitting%s", was_fit ? " finished" : "...");
-                ImGui::Text("Theta: %f"
-                            "\nVertical deviation: % f"
-                            "\nThreshold:           %f",
-                            solver->up.initial_angle, fit_deviation, fit_threshold);
-            }
-        }
-
-        if (force_solve)
-            return true;
-
-        if (!auto_solve)
-            return false;
-
-        if (!solved)
-            return true;
-
-        if (auto_fit_angle && !was_fit)
-            return true;
-
-        return false;
-    }
-
-    void accept_solution(C_Solver* solver) {
-        if (auto_fit_angle) {
-            fit_deviation = solver->elements[solver->up.elements_count].full.y;
-            C_float deviation_factor = fit_deviation / solver->up.total_length;
-            C_float angle_factor = (PI / 2.0) * deviation_factor;
-            C_float angle_delta = angle_factor * fit_rate;
-            solver->up.initial_angle -= angle_delta;
-        }
-    }
+    void accept_solution(C_Solver* solver);
 };
 
 
