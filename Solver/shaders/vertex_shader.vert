@@ -412,7 +412,7 @@ out vec3 vertexColor;
 void main() {
     GLSL_UNPACK_UP(up, up_array);
 
-    GLSL_float s = aPos.x * up.total_length / GLSL_float(elements.length());
+    GLSL_float s = aPos.x * up.total_length / GLSL_float(up.elements_count);
     int element_index = int(aPos.y);
 
     GLSL_Element el_0 = elements[element_index];
