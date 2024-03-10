@@ -6,7 +6,15 @@
 #include <array>
 
 
+#define GLSL_USE_DOUBLE_PRECISION 1
+
+#if GLSL_USE_DOUBLE_PRECISION
+#define GLSL_float double
+#define OpenGLDataType GL_DOUBLE
+#else
 #define GLSL_float float
+#define OpenGLDataType GL_FLOAT
+#endif
 
 
 struct GLSL_Basis {

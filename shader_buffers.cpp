@@ -152,7 +152,7 @@ void ShaderBuffers::draw(GLSL_UniformParams up, GLSL_float zoom, std::array<GLSL
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_index);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(0, 2, OpenGLDataType, GL_FALSE, 0, nullptr);
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_index);
     glDrawArrays(dashed ? GL_LINES : GL_LINE_STRIP, 0, vbo_vertices_count);
