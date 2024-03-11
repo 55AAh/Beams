@@ -6,7 +6,7 @@
 #include <array>
 
 
-#define GLSL_USE_DOUBLE_PRECISION 1
+#define GLSL_USE_DOUBLE_PRECISION 0
 
 #if GLSL_USE_DOUBLE_PRECISION
 #define GLSL_float double

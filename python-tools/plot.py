@@ -35,6 +35,13 @@ def main():
             plt.plot(el_seg_x, el_seg_y, color=color)
 
     plt.title(str(up), wrap=True, pad=-20)
+    plt.axhline(0, color='gray')
+    plt.axvline(0, color='gray')
+    plt.axis('equal')
+    xabs_max = abs(max(plt.gca().get_xlim(), key=abs))
+    yabs_max = abs(max(plt.gca().get_ylim(), key=abs))
+    plt.gca().set_xlim(xmin=-xabs_max, xmax=xabs_max)
+    plt.gca().set_ylim(ymin=-yabs_max, ymax=yabs_max)
     plt.show()
 
 
